@@ -1,0 +1,76 @@
+project     = JsonStream
+description = JSONStream Manager Documentation
+
+exampledirs = ../examples
+headerdirs  = ./src ../src
+imagedirs   = images
+sourcedirs  = ./src ../src
+
+Cpp.ignoretokens = \
+    QT_BEGIN_HEADER \
+    QT_END_HEADER \
+    Q_ENUMS \
+    Q_INVOKABLE \
+    QT_BEGIN_NAMESPACE_JSONSTREAM \
+    QT_END_NAMESPACE_JSONSTREAM \
+    Q_ADDON_JSONSTREAM_EXPORT
+
+# The following parameters are for creating a qhp file, the qhelpgenerator
+# program can convert the qhp file into a qch file which can be opened in
+# Qt Assistant and/or Qt Creator.
+
+# Defines the name of the project. You cannot use operators (+, =, -) in
+# the name. Properties for this project are set using a qhp.<projectname>.property
+# format.
+qhp.projects = JsonStream
+
+# Sets the name of the output qhp file.
+qhp.JsonStream.file = JsonStream.qhp
+
+# Namespace for the output file. This namespace is used to distinguish between
+# different documentation files in Creator/Assistant. The namespace ends with
+# a version being a number containing a major, minor and revision element.
+# E.g. version 1.0 becomes 100.
+qhp.JsonStream.namespace = com.nokia.jsonstream.100
+
+# Title for the package, will be the main title for the package in
+# Assistant/Creator.
+qhp.JsonStream.indexTitle = JSON Stream Reference Documentation
+
+# Extra files to add to the output which are not linked to from anywhere
+# using a qdoc \l command.
+qhp.JsonStream.extraFiles = style/style.css \
+                            index.html
+
+# Only update the name of the project for the next variables.
+qhp.JsonStream.virtualFolder = qdoc
+qhp.JsonStream.subprojects = classes
+qhp.JsonStream.subprojects.classes.title = Classes
+qhp.JsonStream.subprojects.classes.selectors = class fake:headerfile
+qhp.JsonStream.subprojects.classes.sortPages = true
+
+
+# Do NOT change the variables after this line unless you know what you are doing.
+
+outputdir = html
+outputformats = HTML
+
+examples.fileextensions = "*.cpp *.h *.js *.svg *.xml *.ui *.qml"
+examples.imageextensions = "*.png *.jpeg *.jpg *.gif *.mng"
+headers.fileextensions = "*.h *.ch *.h++ *.hh *.hpp *.hxx"
+sources.fileextensions = "*.cpp *.qdoc *.mm *.qml"
+
+HTML.nobreadcrumbs = "true"
+
+HTML.templatedir = .
+HTML.stylesheets = style.css
+
+HTML.headerstyles = "  <link rel=\"stylesheet\" type=\"text/css\" href=\"style/style.css\" />\n"
+HTML.endheader = "</head>\n"
+
+HTML.postheader = \
+  " <div class=\"header\">\n" \
+  "   <div id=\"nav-logo\">\n" \
+  "     <a href=\"index.html\">JSON Stream Reference</a>" \
+  "   </div>\n" \
+  " </div>\n"

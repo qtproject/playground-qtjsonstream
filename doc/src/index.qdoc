@@ -1,0 +1,92 @@
+/****************************************************************************
+**
+** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
+** All rights reserved.
+** Contact: Nokia Corporation (qt-info@nokia.com)
+**
+** This file is part of the documentation of JsonStream
+**
+** $QT_BEGIN_LICENSE:FDL$
+** GNU Free Documentation License
+** Alternatively, this file may be used under the terms of the GNU Free
+** Documentation License version 1.3 as published by the Free Software
+** Foundation and appearing in the file included in the packaging of
+** this file.
+**
+** Other Usage
+** Alternatively, this file may be used in accordance with the terms
+** and conditions contained in a signed written agreement between you
+** and Nokia.
+**
+**
+**
+**
+** $QT_END_LICENSE$
+**
+****************************************************************************/
+
+/*!
+\title JSON Stream Reference
+\page index.html
+
+\section1 Introduction
+
+QML and Javascript programs often need a way of communicating with a
+server on the same machine or different machines.  There are many
+protocols available, but the easiest for
+Javascript-based programming languages is to use \l
+{http://www.json.org} {JSON} data-interchange format.
+The JSON Stream classes implement a client/server framework.
+
+\bold{Discussion and examples}
+\list
+ \o \l{Stream serialization}
+ \o \l{Using JSON stream classes}
+ \o \l{Authority notes}
+\endlist
+
+The JSON Stream classes depend on the Qt Json experimental JSON module.
+This module may be found at http://codreview.qt-project.org under "playground/qtbinaryjson".
+After you download and compile this module, it may be used in any Qt project by adding a
+\code
+QT += json
+\endcode
+line to your .pro file.
+
+\section1 Interfaces
+
+Conceptually, the JSON Stream classes are divided into a generic client (JsonClient),
+a generic server (JsonServer), a stream transport shared by the client and the server (JsonStream),
+and an optional authentication agent (JsonAuthority) which can be installed on the server.
+Each connection to the JsonServer is given a unique \i{identifier} so that the different
+connections can be disambiguated.
+
+\image classes.png
+
+When a new socket connection is opened to the server, the authentication agent "absorbs" all
+communication over that socket until the connection has been properly authenticated.
+The authentication agent is also responsible for setting the \i{identifier} of the connection.
+For example, an authentication agent that matches the process ID (PID) of the connecting
+client to an appropriate user and permission writes may set the \i{identifier} of the
+connection to the Unix name of the UID of the connecting process.
+
+\section2 C++ API
+
+\generatelist annotatedclasses
+
+*/
+
+/*!
+  \page classes.html
+  \title All Classes
+
+  \brief If you know the name of the class, it should be here
+
+  This is a list of all of the classes provided by JSON Stream Manager.
+
+  \generatelist classes
+
+
+    \generatelist{namespaces}
+
+*/

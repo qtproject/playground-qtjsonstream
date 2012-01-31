@@ -1,0 +1,110 @@
+/****************************************************************************
+**
+** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
+** All rights reserved.
+** Contact: Nokia Corporation (qt-info@nokia.com)
+**
+** This file is part of the documentation of JsonStream
+**
+** $QT_BEGIN_LICENSE:FDL$
+** GNU Free Documentation License
+** Alternatively, this file may be used under the terms of the GNU Free
+** Documentation License version 1.3 as published by the Free Software
+** Foundation and appearing in the file included in the packaging of
+** this file.
+**
+** Other Usage
+** Alternatively, this file may be used in accordance with the terms
+** and conditions contained in a signed written agreement between you
+** and Nokia.
+**
+**
+**
+**
+** $QT_END_LICENSE$
+**
+****************************************************************************/
+
+/*!
+\title Using JSON stream classes
+\target using
+\page using.html
+
+\section1 Using the JSON Stream Manager
+
+The JSON Stream classes don't enforce a particular message protocol;
+instead, they provide the base classes for implementing your own
+client/server protocol using JSON serialization. In this section we
+describe how you can use the classes to implement your own protocol.
+
+First, an example of a simple server.  This server uses no authentication
+protocol.
+
+\code
+  #include <JsonServer>
+
+  void start()
+  {
+    QString socket = qgetenv("JSON_SOCKET");
+    if (socket.isEmpty())
+       socket = "/tmp/jsonsocket";
+    JsonServer *server = new JsonServer;
+    connect(server, SIGNAL(connectionAdded(const QString&)),  ...);
+    connect(server, SIGNAL(messageReceived(const QString&, const QJsonObject&)),  ... );
+    if (!server->listen(socket))
+      qCritical() << Q_FUNC_INFO << "Unable to open socket" << socket;
+  }
+\endcode
+
+Next, a client that connects to that server:
+
+\code
+  #include <JsonClient>
+
+  void start()
+  {
+    JsonClient *client = new JsonClient();
+    connect(client, SIGNAL(messageReceived(const QJsonObject&)), ...);
+
+    QString socketname = qgetenv("JSON_SOCKET");
+    if (socketname.isEmpty())
+      socketname = "/tmp/jsonsocket";
+
+    if (!client->connectLocal(socketname))
+      qCritical() << Q_FUNC_INFO << "Unable to open socket " << socketname;
+  }
+\endcode
+
+\section2 Authentication
+
+
+If we want to add an authentication agent to the server, we only need to add
+an appropriate JsonAuthority subclass to the server.  For example, to
+authenticate clients based on strings tokens, we can modify
+the server code as follows:
+
+\code
+  JsonAuthority *authority = new JsonTokenAuthority;
+  JsonServer *server = new JsonServer(authority);
+
+  // Before clients attempt to connect, set authorization:
+  authority->authorize("XXXYYYZZZ", "valid-client");
+\endcode
+
+The client code needs to add an authorization token:
+
+\code
+  JsonClient *client = new JsonClient("XXXYYYZZZ");
+\endcode
+
+In many cases, this authorization token will be passed to the client
+when the client application is started.  For example, the client token
+could be passed as an environment variable \c {JSONTOKEN}.  Then the
+client can be written as:
+
+\code
+  QString token = qgetenv("JSONTOKEN");
+  JsonClient *client = new JsonClient(token);
+\endcode
+
+*/

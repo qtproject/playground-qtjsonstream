@@ -1,0 +1,72 @@
+/****************************************************************************
+**
+** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
+** All rights reserved.
+** Contact: Nokia Corporation (qt-info@nokia.com)
+**
+** This file is part of the documentation of JsonStream
+**
+** $QT_BEGIN_LICENSE:FDL$
+** GNU Free Documentation License
+** Alternatively, this file may be used under the terms of the GNU Free
+** Documentation License version 1.3 as published by the Free Software
+** Foundation and appearing in the file included in the packaging of
+** this file.
+**
+** Other Usage
+** Alternatively, this file may be used in accordance with the terms
+** and conditions contained in a signed written agreement between you
+** and Nokia.
+**
+**
+**
+**
+** $QT_END_LICENSE$
+**
+****************************************************************************/
+
+/*!
+\title Authority notes
+\page authorities.html
+
+\section1 Methods of authorization
+
+There are a number of ways to authorize socket connections.  These
+techniques may be dependent on the operating system and the type
+of connection (TCP or Unix local socket).
+
+The JsonTokenAuthority is the simplest method.  It works for both
+Unix and TCP sockets.  On connection, the JsonTokenAuthority expects
+that the first message received will look like:
+\c {{ "token": MAGIC }}.  The \c{MAGIC} token should be a unique
+string that has been agreed upon.
+
+The JsonPidAuthority maintains a table of authorized process IDs.
+This technique only works for Unix local sockets. Under
+Linux, the process id of the remote end of a Unix local socket can
+be reliably determined by using the \c SO_PEERCRED socket option.
+\code
+  struct ucred cr;
+  socklen_t len = sizeof(struct ucred);
+  if (getsockopt(fd, SOL_SOCKET, SO_PEERCRED, &cr, &len) == 0) {
+    return cr.pid;
+  }
+\endcode
+This same function call gives you the UID and GID of the other
+end of the socket:
+\code
+  struct ucred {
+    pid_t pid;
+    uid_t uid;
+    gid_t gid;
+  };
+\endcode.
+Note that the socket must have the \c SO_PASSCRED option set.
+
+Under BSD systems, the (roughly) equivalent function is \c LOCAL_PEERCRED, which
+is more conveniently accessed through the \c getpeerid() function.  Unfortunately,
+this function only returns the UID and GID of the remote connection.
+On the other hand, the remote connection doesn't have to set \c SO_PASSCRED,
+which is an advantage.
+
+*/
