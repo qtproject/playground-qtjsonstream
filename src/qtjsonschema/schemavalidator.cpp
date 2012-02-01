@@ -54,10 +54,6 @@
 
 QT_BEGIN_NAMESPACE_JSONSTREAM
 
-/*!
-    \internal
-    \brief The SchemaValidatorPrivate class stores private data for SchemaValidator class.
-*/
 class SchemaValidator::SchemaValidatorPrivate
 {
 public:
@@ -65,7 +61,7 @@ public:
 };
 
 /*!
-    \class QtAddOn::JsonSchema::SchemaValidator
+    \class SchemaValidator
 
     \brief The SchemaValidator class implements JSON Schema Validation API.
 */
@@ -83,12 +79,16 @@ public:
 /*!
     \brief The SchemaValidator class implements JSON Schema Validation API.
 
-    Creates a new SchemaValidator.
+    Creates a new SchemaValidator with optional \a parent.
 */
 SchemaValidator::SchemaValidator(QObject *parent) :
     QObject(parent), d_ptr(new SchemaValidatorPrivate)
 {
 }
+
+/*!
+    \internal
+ */
 
 SchemaValidator::~SchemaValidator()
 {
@@ -136,7 +136,7 @@ QJsonObject SchemaValidator::initializeFromFolder(const QString & path, const QS
 }
 
 /*!
-    Initializes a validator object with data from \a filename schema file.
+    Initializes a validator object with data from \a filename schema file, using \a type and \a shemaName.
     Returns empty variant map at success or a map filled with error information otherwise
 */
 QJsonObject SchemaValidator::initializeFromFile(const QString &filename, SchemaNameInitialization type, const QString & shemaName)
@@ -168,7 +168,7 @@ QJsonObject SchemaValidator::initializeFromFile(const QString &filename, SchemaN
 }
 
 /*!
-    Initializes a validator object with \a data schema data.
+    Initializes a validator object from a QByteArray \a json matching \a name and using \a type.
     Returns empty variant map at success or a map filled with error information otherwise
 */
 QJsonObject SchemaValidator::initializeFromData(const QByteArray & json, const QString & name, SchemaNameInitialization type)
