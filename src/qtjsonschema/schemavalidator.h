@@ -44,6 +44,7 @@
 #include <QJsonObject>
 
 #include "jsonschema-global.h"
+#include "schemaerror.h"
 
 QT_BEGIN_NAMESPACE_JSONSTREAM
 
@@ -58,14 +59,16 @@ public:
     {
         UseFilename = 0,
         UseParameter,
-        UseElement
+        UseProperty
     };
 
-    QJsonObject initializeFromFile(const QString &, SchemaNameInitialization = UseFilename, const QString & = QString::null);
-    QJsonObject initializeFromFolder(const QString &, const QString & = QString::null, const QByteArray & ext = "json");
-    QJsonObject initializeFromData(const QByteArray &, const QString &, SchemaNameInitialization = UseParameter);
+    bool loadFromFile(const QString &, SchemaNameInitialization = UseFilename, const QString & = QString::null);
+    bool loadFromFolder(const QString &, const QString & = QString::null, const QByteArray & ext = "json");
+    bool loadFromData(const QByteArray &, const QString &, SchemaNameInitialization = UseParameter);
 
-    QJsonObject validateSchema(const QString &schemaName, QJsonObject object);
+    bool validateSchema(const QString &schemaName, QJsonObject object);
+
+    SchemaError getLastError() const;
 
 protected:
     QJsonObject setSchema(const QString &schemaName, QJsonObject schema);
@@ -73,6 +76,11 @@ protected:
 signals:
 
 public slots:
+
+private:
+    QJsonObject _loadFromFile(const QString &, SchemaNameInitialization = UseFilename, const QString & = QString::null);
+    QJsonObject _loadFromFolder(const QString &, const QString & = QString::null, const QByteArray & ext = "json");
+    QJsonObject _loadFromData(const QByteArray &, const QString &, SchemaNameInitialization = UseParameter);
 
 private:
     class SchemaValidatorPrivate;

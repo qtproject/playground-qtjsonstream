@@ -54,10 +54,19 @@
 
 QT_BEGIN_NAMESPACE_JSONSTREAM
 
+/*!
+    \internal
+*/
+inline QJsonObject makeError(SchemaError::ErrorCode code, const QString &message)
+{
+    return SchemaError(code, message).object();
+}
+
 class SchemaValidator::SchemaValidatorPrivate
 {
 public:
     SchemaManager<QJsonObject, JsonObjectTypes> mSchemas;
+    SchemaError mLastError;
 };
 
 /*!
@@ -72,8 +81,8 @@ public:
          Initialize schema name (object type) from filename (without extension).
      \value UseParameter
          Use parameter as a schema name.
-     \value UseElement
-         Initialize schema name (object type) from a JSON element with a specified name.
+     \value UseProperty
+         Initialize schema name (object type) from a JSON property with a specified name.
 */
 
 /*!
@@ -96,20 +105,68 @@ SchemaValidator::~SchemaValidator()
 }
 
 /*!
-    Initializes a validator object with data from schema files with \a ext extension
+    Returns a detailed error information about the last schema operation
+*/
+SchemaError SchemaValidator::getLastError() const
+{
+    return d_ptr->mLastError;
+}
+
+/*!
+    Supplements a validator object with data from schema files with \a ext extension
     in \a path folder.
     Schema name (object type) can be defined by the filename of the schema file or
-    from \a schemaNameElement element in JSON object.
+    from \a schemaNameProperty property in JSON object.
+    Returns true at success, otherwise getLastError() can be used to access
+    a detailed error information.
+*/
+bool SchemaValidator::loadFromFolder(const QString & path, const QString & schemaNameProperty, const QByteArray & ext/*= "json"*/)
+{
+    Q_D(SchemaValidator);
+    d->mLastError = _loadFromFolder(path, schemaNameProperty, ext);
+    return SchemaError::NoError == d->mLastError.errorCode();
+}
+
+/*!
+    Supplements a validator object with data from \a filename schema file, using \a type and \a shemaName.
+    Returns true at success, otherwise getLastError() can be used to access
+    a detailed error information.
+*/
+bool SchemaValidator::loadFromFile(const QString &filename, SchemaNameInitialization type, const QString & schemaName)
+{
+    Q_D(SchemaValidator);
+    d->mLastError = _loadFromFile(filename, type, schemaName);
+    return SchemaError::NoError == d->mLastError.errorCode();
+}
+
+/*!
+    Supplements a validator object with data from a QByteArray \a json matching \a name and using \a type.
+    Returns true at success, otherwise getLastError() can be used to access
+    a detailed error information.
+*/
+bool SchemaValidator::loadFromData(const QByteArray & json, const QString & name, SchemaNameInitialization type)
+{
+    Q_D(SchemaValidator);
+    d->mLastError = _loadFromData(json, name, type);
+    return SchemaError::NoError == d->mLastError.errorCode();
+ }
+
+/*!
+    \internal
+    Supplements a validator object with data from schema files with \a ext extension
+    in \a path folder.
+    Schema name (object type) can be defined by the filename of the schema file or
+    from \a schemaNameProperty property in JSON object.
     Returns empty variant map at success or a map filled with error information otherwise
 */
-QJsonObject SchemaValidator::initializeFromFolder(const QString & path, const QString & schemaNameElement, const QByteArray & ext/*= "json"*/)
+QJsonObject SchemaValidator::_loadFromFolder(const QString & path, const QString & schemaNameProperty, const QByteArray & ext/*= "json"*/)
 {
     QJsonObject ret;
     QDir dir(!path.isEmpty() ? path : QDir::currentPath());
     if (dir.exists())
     {
-        SchemaNameInitialization type(schemaNameElement.isEmpty() ? UseFilename : UseElement);
-        QString name(UseElement == type ? schemaNameElement : QString::null);
+        SchemaNameInitialization type(schemaNameProperty.isEmpty() ? UseFilename : UseProperty);
+        QString name(UseProperty == type ? schemaNameProperty : QString::null);
 
         // create a filter if required
         QStringList exts;
@@ -125,7 +182,7 @@ QJsonObject SchemaValidator::initializeFromFolder(const QString & path, const QS
                 name = ext.isEmpty() ? filename : filename.left(filename.length() - ext.length() - 1);
             }
 
-            QJsonObject ret0 = initializeFromFile(dir.path() + QDir::separator() + filename, type, name);
+            QJsonObject ret0 = _loadFromFile(dir.path() + QDir::separator() + filename, type, name);
             if (!ret0.isEmpty())
             {
                 ret.insert(filename, ret0);
@@ -136,10 +193,11 @@ QJsonObject SchemaValidator::initializeFromFolder(const QString & path, const QS
 }
 
 /*!
-    Initializes a validator object with data from \a filename schema file, using \a type and \a shemaName.
+    \internal
+    Supplements a validator object with data from \a filename schema file, using \a type and \a shemaName.
     Returns empty variant map at success or a map filled with error information otherwise
 */
-QJsonObject SchemaValidator::initializeFromFile(const QString &filename, SchemaNameInitialization type, const QString & shemaName)
+QJsonObject SchemaValidator::_loadFromFile(const QString &filename, SchemaNameInitialization type, const QString & shemaName)
 {
     QJsonObject ret;
     if (!filename.isEmpty())
@@ -157,7 +215,7 @@ QJsonObject SchemaValidator::initializeFromFile(const QString &filename, SchemaN
                 name = QFileInfo(schemaFile).baseName();
             }
 
-            ret = initializeFromData(json, name, type);
+            ret = _loadFromData(json, name, type);
         }
         else
         {
@@ -168,10 +226,11 @@ QJsonObject SchemaValidator::initializeFromFile(const QString &filename, SchemaN
 }
 
 /*!
-    Initializes a validator object from a QByteArray \a json matching \a name and using \a type.
+    \internal
+    Supplements a validator object from a QByteArray \a json matching \a name and using \a type.
     Returns empty variant map at success or a map filled with error information otherwise
 */
-QJsonObject SchemaValidator::initializeFromData(const QByteArray & json, const QString & name, SchemaNameInitialization type)
+QJsonObject SchemaValidator::_loadFromData(const QByteArray & json, const QString & name, SchemaNameInitialization type)
 {
     QJsonDocument doc = QJsonDocument::fromJson(json);
     QJsonObject schemaObject = doc.object();
@@ -179,17 +238,30 @@ QJsonObject SchemaValidator::initializeFromData(const QByteArray & json, const Q
     //qDebug() << "shemaName " << name << " type= " << type;
     //qDebug() << "schemaBody " << schemaObject;
 
+    if (doc.isNull())
+    {
+        return makeError(SchemaError::InvalidObject,
+                            "schema data is invalid");
+    }
+
     QJsonObject ret;
     QString schemaName;
-    if (UseElement == type  && schemaObject.contains(name))
+    if (UseProperty == type && schemaObject.contains(name))
     {
         // retrive object type from JSON element
         // don't need this element any more (?)
         schemaName = schemaObject.take(name).toString();
     }
-    else if (UseElement != type)
+    else if (UseProperty != type)
     {
         schemaName = name;
+    }
+    else if (!name.isEmpty())
+    {
+        // property containing schema name is absent
+        return makeError(SchemaError::InvalidSchemaOperation,
+                            QString("name property '%1' must be present").arg(name));
+
     }
 
     if (!schemaName.isEmpty())
@@ -199,17 +271,22 @@ QJsonObject SchemaValidator::initializeFromData(const QByteArray & json, const Q
     else
     {
         // no schema type
+        ret = makeError(SchemaError::InvalidSchemaOperation,
+                            "schema name is missing");
     }
     return ret;
 }
 
 /*!
     Validates \a object with \a schemaName schema.
-    Returns empty variant map at success or a map filled with error information otherwise
+    Returns true at success, otherwise getLastError() can be used to access
+    a detailed error information.
 */
-QJsonObject SchemaValidator::validateSchema(const QString &schemaName, QJsonObject object)
+bool SchemaValidator::validateSchema(const QString &schemaName, QJsonObject object)
 {
-    return d_ptr->mSchemas.validate(schemaName, object);
+    Q_D(SchemaValidator);
+    d->mLastError = d->mSchemas.validate(schemaName, object);
+    return SchemaError::NoError == d->mLastError.errorCode();
 }
 
 /*!

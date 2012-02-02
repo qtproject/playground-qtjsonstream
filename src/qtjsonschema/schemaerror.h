@@ -59,16 +59,16 @@ public:
     };
 
     SchemaError() {}
-    SchemaError(const QJsonObject & _data) : data(_data) {}
+    SchemaError(const QJsonObject & _data) : m_data(_data) {}
     SchemaError(ErrorCode, const QString &);
 
     ErrorCode errorCode() const;
     QString errorString() const;
 
-    QJsonObject object() const { return data; }
+    QJsonObject object() const { return m_data; }
 
 private:
-    QJsonObject data;
+    QJsonObject m_data;
 };
 
 QT_END_NAMESPACE_JSONSTREAM

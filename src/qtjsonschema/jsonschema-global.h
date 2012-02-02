@@ -43,13 +43,4 @@
 
 #include "jsonstream-global.h"
 
-QT_BEGIN_NAMESPACE_JSONSTREAM
-
-enum ErrorCode {
-    NoError = 0,
-    FailedSchemaValidation
-};
-
-QT_END_NAMESPACE_JSONSTREAM
-
 #endif // JSONSCHEMA_GLOBAL_H

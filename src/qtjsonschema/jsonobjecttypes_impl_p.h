@@ -44,6 +44,7 @@
 #include "schemamanager_p.h"
 
 #include "jsonschema-global.h"
+#include "schemaerror.h"
 
 QT_BEGIN_NAMESPACE_JSONSTREAM
 
@@ -152,7 +153,7 @@ inline QJsonObject JsonObjectTypes::Service::error() const
 
 inline void JsonObjectTypes::Service::setError(const QString &message)
 {
-    m_errorMap.insert("code", FailedSchemaValidation);
+    m_errorMap.insert("code", SchemaError::FailedSchemaValidation);
     m_errorMap.insert("message", message);
 }
 

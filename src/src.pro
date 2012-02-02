@@ -28,6 +28,7 @@ BSON_HEADERS = \
 
 SCHEMA_PUBLIC_HEADERS = \
     $$PWD/qtjsonschema/jsonschema-global.h \
+    $$PWD/qtjsonschema/schemaerror.h \
     $$PWD/qtjsonschema/schemavalidator.h
 
 SCHEMA_HEADERS = \
@@ -41,6 +42,7 @@ SCHEMA_HEADERS = \
     $$PWD/qtjsonschema/varobjecttypes_impl_p.h
 
 SCHEMA_SOURCES = \
+    $$PWD/qtjsonschema/schemaerror.cpp \
     $$PWD/qtjsonschema/schemavalidator.cpp
 
 PUBLIC_HEADERS += \

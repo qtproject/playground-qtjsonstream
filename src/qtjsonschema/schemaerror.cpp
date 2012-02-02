@@ -61,8 +61,8 @@ QT_BEGIN_NAMESPACE_JSONSTREAM
 */
 SchemaError::SchemaError(ErrorCode code, const QString & message)
 {
-    data.insert("code", code);
-    data.insert("message", message);
+    m_data.insert("code", code);
+    m_data.insert("message", message);
 }
 
 /*!
@@ -70,7 +70,7 @@ SchemaError::SchemaError(ErrorCode code, const QString & message)
 */
 SchemaError::ErrorCode SchemaError::errorCode() const
 {
-    return data.isEmpty() ? SchemaError::NoError : (SchemaError::ErrorCode)(data.value("code").toDouble());
+    return m_data.isEmpty() ? SchemaError::NoError : (SchemaError::ErrorCode)(m_data.value("code").toDouble());
 }
 
 /*!
@@ -78,7 +78,7 @@ SchemaError::ErrorCode SchemaError::errorCode() const
 */
 QString SchemaError::errorString() const
 {
-    return data.isEmpty() ? QString() : data.value("message").toString();
+    return m_data.isEmpty() ? QString() : m_data.value("message").toString();
 }
 
 QT_END_NAMESPACE_JSONSTREAM
