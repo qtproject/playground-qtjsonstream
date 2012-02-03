@@ -198,7 +198,7 @@ AuthorizationRecord JsonUIDAuthority::clientConnected(JsonStream *stream)
 #if defined(Q_OS_MAC)
     gid_t egid;
     if (::getpeereid(socket->socketDescriptor(), &euid, &egid) != 0) {
-        qDebug() << "getpeereid failed with errcode" << errno << socket->socketDescriptor();
+        qWarning() << "getpeereid failed with errcode" << errno << socket->socketDescriptor();
         return authRecord;
     }
 #else
@@ -206,7 +206,7 @@ AuthorizationRecord JsonUIDAuthority::clientConnected(JsonStream *stream)
     struct ucred cr;
     socklen_t len = sizeof(struct ucred);
     if (::getsockopt(socket->socketDescriptor(), SOL_SOCKET, SO_PEERCRED, &cr, &len) != 0) {
-        qDebug() << "getsockopt failed with errcode" << errno << socket->socketDescriptor();
+        qWarning() << "getsockopt failed with errcode" << errno << socket->socketDescriptor();
         return authRecord;
     }
     euid = cr.uid;

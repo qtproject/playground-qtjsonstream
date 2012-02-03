@@ -153,7 +153,7 @@ AuthorizationRecord JsonPIDAuthority::clientConnected(JsonStream *stream)
             authRecord.state = StateAuthorized;
         }
     } else {
-        qDebug() << "getsockopt failed with errcode" << errno << socket->socketDescriptor();
+        qWarning() << "getsockopt failed with errcode" << errno << socket->socketDescriptor();
         authRecord.state = StateNotAuthorized;
     }
 

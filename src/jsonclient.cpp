@@ -129,7 +129,7 @@ bool JsonClient::connectTCP(const QString& hostname, int port)
 bool JsonClient::connectLocal(const QString& socketname)
 {
     if (!QFile::exists(socketname)) {
-        qDebug() << Q_FUNC_INFO << "socket does not exist";
+        qWarning() << Q_FUNC_INFO << "socket does not exist";
         return false;
     }
 
@@ -141,7 +141,7 @@ bool JsonClient::connectLocal(const QString& socketname)
         mStream.setDevice(socket);
         connect(&mStream, SIGNAL(messageReceived(const QJsonObject&)),
                 this, SIGNAL(messageReceived(const QJsonObject&)));
-        qDebug() << "Sending local socket registration message" << mRegistrationMessage;
+        // qDebug() << "Sending local socket registration message" << mRegistrationMessage;
         mStream.send(mRegistrationMessage);
         return true;
     }

@@ -130,7 +130,6 @@ void JsonServerClient::stop()
 
 void JsonServerClient::received(const QJsonObject& message)
 {
-    qDebug() << Q_FUNC_INFO << message;
     if (m_identifier.isEmpty()) {
         if (m_authority.isNull()) {
             emit authorizationFailed();

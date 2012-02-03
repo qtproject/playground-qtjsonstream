@@ -183,7 +183,6 @@ void JsonStream::send(const QJsonObject& object)
 
 void JsonStream::sendInternal(const QByteArray& byteArray)
 {
-    qWarning() << Q_FUNC_INFO << "byteArray " << byteArray.length();
     if (!mDevice) {
         qWarning() << Q_FUNC_INFO << "No device in JsonStream";
         return;
@@ -200,7 +199,6 @@ void JsonStream::sendInternal(const QByteArray& byteArray)
     if (nBytes != byteArray.size())
         qCritical() << Q_FUNC_INFO << __LINE__
                     << QString("Expected to write %1 bytes, actually %2.").arg(byteArray.size()).arg(nBytes);
-    // qDebug() << QString("Wrote %1 bytes to socket").arg(nBytes);
 }
 
 /*!
