@@ -67,6 +67,9 @@ public:
 
     QJsonObject object() const { return m_data; }
 
+    static const QString kCodeStr;
+    static const QString kMessageStr;
+
 private:
     QJsonObject m_data;
 };

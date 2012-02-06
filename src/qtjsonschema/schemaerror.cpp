@@ -43,6 +43,9 @@
 
 QT_BEGIN_NAMESPACE_JSONSTREAM
 
+const QString SchemaError::kCodeStr    = QString::fromLatin1("code");
+const QString SchemaError::kMessageStr = QString::fromLatin1("message");
+
 /*!
     \class SchemaError
     \brief The SchemaError class lists possible error codes.

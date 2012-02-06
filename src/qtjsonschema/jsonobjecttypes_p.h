@@ -1,8 +1,9 @@
 /****************************************************************************
 **
 ** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** All rights reserved.
-** Contact: Nokia Corporation (qt-info@nokia.com)
+** Contact: http://www.qt-project.org/
+**
+** This file is part of the QtAddOn.JsonStream module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
 ** GNU Lesser General Public License Usage
@@ -33,6 +34,7 @@
 **
 **
 **
+**
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
@@ -54,8 +56,8 @@ class SchemaManagerBase;
 
 /**
   \internal
-  This is type definition for schema validation framework. It was created because of planed change
-  of data representation in jsondb (Bson -> Qson). Essentially schema validation is independent from
+  This is type definition for schema validation framework.
+  Essentially schema validation is independent from
   data representation. The performance cost of this indirection is about 0. We can consider removing
   it in future or leave it and check different data representation (think about QJSValue).
 
@@ -64,14 +66,56 @@ class SchemaManagerBase;
 class JsonObjectTypes {
 public:
     typedef QString Key;
-    typedef QJsonArray ValueList;
 
-    class Object;
-    class Value : QJsonValue
+    class Value;
+    class ValueList : protected QJsonArray
     {
     public:
-        inline Value(const QJsonValue &);
+        inline ValueList(const QJsonArray &list);
+
+        // interface
+        class const_iterator;
+        inline uint count() const;
+        inline const_iterator constBegin() const;
+        inline const_iterator constEnd() const;
+        class const_iterator
+        {
+            friend class ValueList;
+        public:
+            inline const_iterator();
+            inline Value operator *() const;
+            inline bool operator !=(const const_iterator &other) const;
+            inline const_iterator& operator ++();
+
+        private:
+            inline const_iterator(int begin, const QJsonArray *list);
+            inline bool isValid() const;
+
+            int m_index;
+            const QJsonArray *m_list;
+        };
+    };
+
+    class Object;
+    class Value
+    {
+        enum Type {List, Map, RootMap};
+
+        template<class T>
+        class Cache : protected QPair<bool, T>
+        {
+        public:
+            Cache()
+                : QPair<bool, T>(false, T())
+            {}
+            bool isValid() const { return QPair<bool, T>::first; }
+            T value() const { Q_ASSERT(isValid()); return QPair<bool, T>::second; }
+            void set(const bool ok, const T &value) { QPair<bool, T>::first = ok; QPair<bool, T>::second = value; }
+        };
+
+    public:
         inline Value(Key propertyName, const QJsonObject &);
+        inline Value(const int index, const QJsonArray &list);
 
         // interface
         inline int toInt(bool *ok) const;
@@ -80,9 +124,23 @@ public:
         inline QString toString(bool *ok) const;
         inline bool toBoolean(bool *ok) const;
         inline void toNull(bool *ok) const;
-        inline JsonObjectTypes::Object toObject(bool *ok) const;
+        inline Object toObject(bool *ok) const;
 
     private:
+        inline const QJsonObject map() const;
+        inline const QJsonArray list() const;
+        inline QJsonValue::Type typeMap() const;
+        inline QJsonValue::Type typeList() const;
+
+        const int m_index;
+        const Key m_property;
+
+        const QJsonValue m_value;
+        const Type m_type;
+
+        mutable Cache<QJsonValue::Type> m_jsonTypeCache;
+        mutable Cache<int> m_intCache;
+        mutable Cache<double> m_doubleCache;
     };
 
     class Object : public QJsonObject
