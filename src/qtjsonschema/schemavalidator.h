@@ -70,6 +70,11 @@ public:
 
     SchemaError getLastError() const;
 
+    QStringList schemaNames() const;
+    bool hasSchema(const QString &);
+    void removeSchema(const QString &);
+    void clear();
+
 protected:
     QJsonObject setSchema(const QString &schemaName, QJsonObject schema);
 

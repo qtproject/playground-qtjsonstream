@@ -283,6 +283,13 @@ inline JsonObjectTypes::Object JsonObjectTypes::Value::toObject(bool *ok) const
     return Object(QJsonObject());
 }
 
+inline bool JsonObjectTypes::Value::compare(const Value & val) const
+{
+    QJsonValue v0(m_type == Map ? map().value(m_property) : (m_type == List ? list().at(m_index) : QJsonValue()));
+    QJsonValue v1(val.m_type == Map ? val.map().value(val.m_property) : (val.m_type == List ? val.list().at(val.m_index) : QJsonValue()));
+    return v0 == v1;
+}
+
 inline const QJsonObject JsonObjectTypes::Value::map() const
 {
     Q_ASSERT(m_type == Map);

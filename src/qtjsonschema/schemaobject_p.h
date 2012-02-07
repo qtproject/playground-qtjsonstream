@@ -196,6 +196,8 @@ class SchemaPrivate : public QSharedData
     class CheckMinLength;
     // 5.18
     class CheckMaxLength;
+    // 5.19
+    class CheckEnum;
     // 5.21
     class CheckTitle;
     // 5.26

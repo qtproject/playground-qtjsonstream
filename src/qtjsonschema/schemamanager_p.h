@@ -70,6 +70,10 @@ public:
 
     inline T validate(const QString &schemaName, T object);
 
+    QStringList names() const { return m_schemas.keys(); }
+
+    void clear() { m_schemas.clear(); }
+
 private:
     typedef QPair<T, SchemaValidation::Schema<TT> > MapSchemaPair;
     inline T ensureCompiled(const QString &schemaName, MapSchemaPair *pair, TypesService *service);

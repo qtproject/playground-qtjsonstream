@@ -63,8 +63,8 @@ struct QStaticStringHash
 {
     typedef QStaticStringHash<C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14, C15, C16, C17, C18> Suffix;
 
-    const static int Hash = (C1 ^ Suffix::Hash) + 5;
-    //(C1 ^ ( (C2 ^ (...)) +5 )) +5
+    const static int Hash = (C1 ^ Suffix::Hash) + 7;
+    //(C1 ^ ( (C2 ^ (...)) +7 )) +7
 };
 
 template<>
@@ -85,7 +85,7 @@ struct QStaticStringHash<>
 private:
     inline static int hash(const ushort *str, const int index, const int length)
     {
-        return index != length ? (str[index] ^ hash(str, index + 1, length)) + 5
+        return index != length ? (str[index] ^ hash(str, index + 1, length)) + 7
                      : 0;
     }
 };
@@ -607,6 +607,33 @@ private:
     int m_max;
 };
 
+// 5.19
+template<class T>
+class SchemaPrivate<T>::CheckEnum : public Check {
+public:
+    CheckEnum(SchemaPrivate *schema, const Value& value)
+        : Check(schema, "Enum check failed for %1")
+    {
+        bool ok;
+        m_enum = value.toList(&ok);
+        Q_ASSERT(ok);
+    }
+
+    virtual bool doCheck(const Value &value)
+    {
+        typename ValueList::const_iterator i;
+        for (i = m_enum.constBegin(); i != m_enum.constEnd(); ++i) {
+            if (value.compare(*i)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+private:
+    ValueList m_enum;
+};
+
 // 5.26
 template<class T>
 class SchemaPrivate<T>::CheckExtends : public Check {
@@ -773,6 +800,10 @@ typename SchemaPrivate<T>::Check *SchemaPrivate<T>::createCheckPoint(const Key &
     case QStaticStringHash<'m','a','x','l','e','n','g','t','h'>::Hash:
         if (QString::fromLatin1("maxlength") == keyName)
             return new CheckMaxLength(this, value);
+        break;
+    case QStaticStringHash<'e','n','u','m'>::Hash:
+        if (QString::fromLatin1("enum") == keyName)
+            return new CheckEnum(this, value);
         break;
     case QStaticStringHash<'$','r','e','f'>::Hash:
         if (QString::fromLatin1("$ref") == keyName)

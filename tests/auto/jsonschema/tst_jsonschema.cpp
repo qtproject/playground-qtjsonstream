@@ -69,6 +69,8 @@ private slots:
     void testPatternValidation();
     // 5.17, 5.18
     void testMinMaxLengthValidation();
+    // 5.19
+    void testEnum();
     // 5.21
     void testTitleValidation();
     // 5.22
@@ -87,8 +89,17 @@ void tst_JsonSchema::schemaTest()
 {
     bool result;
     SchemaValidator validator;
+
+    // test SchemaValidator::schemaNames() and SchemaValidator::hasSchema() with empty object
+    QVERIFY(validator.schemaNames().isEmpty());
+    QVERIFY(!validator.hasSchema("SchemaTestObject"));
+
     result = validator.loadFromFolder(QDir::currentPath(), "title");
     QVERIFY(result);
+
+    // test SchemaValidator::schemaNames() and SchemaValidator::hasSchema() after schema was added
+    QVERIFY(validator.schemaNames().contains("SchemaTestObject"));
+    QVERIFY(validator.hasSchema("SchemaTestObject"));
 
     // Create an item that matches the schema
     QJsonObject item;
@@ -106,6 +117,11 @@ void tst_JsonSchema::schemaTest()
     result = validator.validateSchema("SchemaTestObject", noncompliant);
     qDebug() << "INVALID validation result: " << result << " message is:" << validator.getLastError().errorString();
     QVERIFY(!result && validator.getLastError().errorCode() == SchemaError::FailedSchemaValidation);
+
+    // test SchemaValidator::removesSchema()
+    validator.removeSchema("SchemaTestObject");
+    QVERIFY(validator.schemaNames().isEmpty());
+    QVERIFY(!validator.hasSchema("SchemaTestObject"));
 }
 
 void tst_JsonSchema::testTypeValidation()
@@ -263,9 +279,15 @@ void tst_JsonSchema::testPatternValidation()
 {
     QVERIFY(validate(QJsonValue(QString("")), "{}"));
     QVERIFY(validate(QJsonValue(QString("")), "{ \"pattern\" : \"^$\" }"));
-#ifdef FIX
-    QVERIFY(validate(QJsonValue(QString("today")), "{ \"pattern\" : \"day\" }"));
-#endif
+
+    // number
+    QVERIFY(validate(QJsonValue(QString("123")), "{ \"pattern\" : \"\\\\d+\" }"));
+    QVERIFY(!validate(QJsonValue(QString("12t")), "{ \"pattern\" : \"\\\\d+\" }"));
+
+    // string
+    QVERIFY(validate(QJsonValue(QString("today")), "{ \"pattern\" : \"today\" }"));
+    QVERIFY(validate(QJsonValue(QString("today")), "{ \"pattern\" : \".oda.\" }"));
+    QVERIFY(!validate(QJsonValue(QString("today")), "{ \"pattern\" : \"day\" }"));
 
     QVERIFY(!validate(QJsonValue(QString("")), "{ \"pattern\" : \"^ $\" }"));
     QVERIFY(!validate(QJsonValue(QString("today")), "{ \"pattern\" : \"dam\" }"));
@@ -283,6 +305,20 @@ void tst_JsonSchema::testMinMaxLengthValidation()
     QVERIFY(!validate(QJsonValue(QString("")), "{ \"minLength\" : 1, \"maxLength\" : 0 }"));
     QVERIFY(!validate(QJsonValue(QString("")), "{ \"minLength\" : 1, \"maxLength\" : 3 }"));
     QVERIFY(!validate(QJsonValue(QString("1234")), "{ \"minLength\" : 1, \"maxLength\" : 3 }"));
+}
+
+// 5.19
+void tst_JsonSchema::testEnum()
+{
+    QVERIFY(validate(QJsonValue(true), "{ \"enum\" : [false, true] }"));
+    QVERIFY(validate(QJsonValue(2), "{ \"enum\" : [1, 2, 3] }"));
+    QVERIFY(validate(QJsonValue(QString("a")), "{ \"enum\" : [\"a\"] }"));
+//FIX    QVERIFY(validate({}, "{ \"properties\" : { \"a\" : { \"enum\" : [\"a\"], \"optional\" : true, \"required\" : false } } }"));
+
+    QVERIFY(!validate(QJsonValue(true), "{ \"enum\" : [\"false\", \"true\"] }"));
+    QVERIFY(!validate(QJsonValue(4), "{ \"enum\" : [1, 2, 3, \"4\"] }"));
+    QVERIFY(!validate(QJsonValue(QString()), "{ \"enum\" : [] }"));
+//FIX    QVERIFY(!validate({}, "{ \"properties\" : { \"a\" : { \"enum\" : [\"a\"], \"optional\" : false, \"required\" : true } } }"));
 }
 
 // 5.21

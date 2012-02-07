@@ -113,6 +113,38 @@ SchemaError SchemaValidator::getLastError() const
 }
 
 /*!
+    Returns the list of initialized schemas in the validator
+*/
+QStringList SchemaValidator::schemaNames() const
+{
+    return d_ptr->mSchemas.names();
+}
+
+/*!
+    Returns true if this validator has a schema with the given \a name.
+*/
+bool SchemaValidator::hasSchema(const QString & name)
+{
+    return d_ptr->mSchemas.contains(name);
+}
+
+/*!
+    Removes the schema with the given \a name from this validator.
+*/
+void SchemaValidator::removeSchema(const QString & name)
+{
+    d_ptr->mSchemas.take(name);
+}
+
+/*!
+    Removes all the schemas from the validator
+*/
+void SchemaValidator::clear()
+{
+    d_ptr->mSchemas.clear();
+}
+
+/*!
     Supplements a validator object with data from schema files with \a ext extension
     in \a path folder.
     Schema name (object type) can be defined by the filename of the schema file or

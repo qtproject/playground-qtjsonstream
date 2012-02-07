@@ -71,6 +71,7 @@ public:
     class ValueList : protected QJsonArray
     {
     public:
+        ValueList() {};
         inline ValueList(const QJsonArray &list);
 
         // interface
@@ -125,6 +126,8 @@ public:
         inline bool toBoolean(bool *ok) const;
         inline void toNull(bool *ok) const;
         inline Object toObject(bool *ok) const;
+
+        inline bool compare(const Value &) const;
 
     private:
         inline const QJsonObject map() const;
