@@ -200,6 +200,8 @@ class SchemaPrivate : public QSharedData
     class CheckEnum;
     // 5.21
     class CheckTitle;
+    // 5.24
+    class CheckDivisibleBy;
     // 5.26
     class CheckExtends;
     // 5.28
@@ -239,6 +241,15 @@ public:
         // we have some checks so it means that something got compiled.
         return m_checks.size();
     }
+
+private:
+    enum Flag {
+            NoOptions = 0x0,
+            ExclusiveMinimum = 0x1,
+            ExclusiveMaximum = 0x2
+    };
+    Q_DECLARE_FLAGS(Flags, Flag)
+    Flags m_flags;
 
 private:
     QVarLengthArray<Check *, 4> m_checks;

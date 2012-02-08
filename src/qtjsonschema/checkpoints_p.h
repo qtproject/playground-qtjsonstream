@@ -47,6 +47,8 @@
 #include <QStringList>
 #include <QDebug>
 
+#include <math.h>
+
 QT_BEGIN_HEADER
 
 namespace SchemaValidation {
@@ -406,7 +408,8 @@ public:
     virtual bool doCheck(const Value &value)
     {
         bool ok;
-        return value.toDouble(&ok) >= m_min && ok;
+        double d = value.toDouble(&ok);
+        return ok && (Check::m_schema->m_flags.testFlag(ExclusiveMinimum) ? d > m_min : d >= m_min);
     }
 private:
     double m_min;
@@ -429,7 +432,8 @@ public:
     {
         //qDebug() << Q_FUNC_INFO << value << m_max << this;
         bool ok;
-        return value.toDouble(&ok) <= m_max && ok;
+        double d = value.toDouble(&ok);
+        return ok && (Check::m_schema->m_flags.testFlag(ExclusiveMaximum) ? d < m_max : d <= m_max);
     }
 private:
     double m_max;
@@ -440,42 +444,74 @@ private:
 template<class T>
 class SchemaPrivate<T>::CheckExclusiveMinimum : public Check {
 public:
-    CheckExclusiveMinimum(SchemaPrivate *schema, const Value &minimum)
+    CheckExclusiveMinimum(SchemaPrivate *schema, const Value &_value)
         : Check(schema, "Exclusive minimum check failed for %1")
     {
         bool ok;
-        m_min = minimum.toDouble(&ok);
+        bool bExclusive = _value.toBoolean(&ok);
+        if (!ok) {
+            // maybe someone used string instead of bool
+            QString value = _value.toString(&ok).toLower();
+            if (value == QString::fromLatin1("false"))
+                bExclusive = false;
+            else if (value == QString::fromLatin1("true"))
+                bExclusive = true;
+            else
+                Q_ASSERT(false);
+
+            if (!value.isEmpty())
+                qWarning() << QString::fromLatin1("Wrong 'exclusiveMinimum' syntax found, instead of boolean type a string was used");
+        }
         Q_ASSERT(ok);
+
+        if (bExclusive) {
+            Check::m_schema->m_flags |= ExclusiveMinimum;
+        }
     }
 
-    virtual bool doCheck(const Value &value)
+    virtual bool doCheck(const Value &)
     {
-        bool ok;
-        return value.toDouble(&ok) > m_min && ok;
+        // check will be done in minimum
+        return true;
     }
 private:
-    double m_min;
 };
 
 // 5.12
 template<class T>
 class SchemaPrivate<T>::CheckExclusiveMaximum : public Check {
 public:
-    CheckExclusiveMaximum(SchemaPrivate *schema, const Value &maximum)
+    CheckExclusiveMaximum(SchemaPrivate *schema, const Value &_value)
         : Check(schema, "Exclusive minimum check failed for %1")
     {
         bool ok;
-        m_max = maximum.toDouble(&ok);
+        bool bExclusive = _value.toBoolean(&ok);
+        if (!ok) {
+            // maybe someone used string instead of bool
+            QString value = _value.toString(&ok).toLower();
+            if (value == QString::fromLatin1("false"))
+                bExclusive = false;
+            else if (value == QString::fromLatin1("true"))
+                bExclusive = true;
+            else
+                Q_ASSERT(false);
+
+            if (!value.isEmpty())
+                qWarning() << QString::fromLatin1("Wrong 'exclusiveMaximum' syntax found, instead of boolean type a string was used");
+        }
         Q_ASSERT(ok);
+
+        if (bExclusive) {
+            Check::m_schema->m_flags |= ExclusiveMaximum;
+        }
     }
 
-    virtual bool doCheck(const Value &value)
+    virtual bool doCheck(const Value &)
     {
-        bool ok;
-        return value.toDouble(&ok) < m_max && ok;
+        // check will be done in maximum
+        return true;
     }
 private:
-    double m_max;
 };
 
 // 5.13
@@ -632,6 +668,30 @@ public:
 
 private:
     ValueList m_enum;
+};
+
+// 5.24
+template<class T>
+class SchemaPrivate<T>::CheckDivisibleBy : public Check {
+public:
+    CheckDivisibleBy(SchemaPrivate *schema, const Value &value)
+        : Check(schema, "DivisibleBy check failed for %1")
+    {
+        // qDebug()  << Q_FUNC_INFO << this;
+        bool ok;
+        m_div = value.toDouble(&ok);
+        Q_ASSERT(ok && m_div != 0);
+    }
+
+    virtual bool doCheck(const Value &value)
+    {
+        //qDebug() << Q_FUNC_INFO << value << m_div << this;
+        bool ok;
+        double d = value.toDouble(&ok);
+        return m_div != 0 && ok && fmod(d, m_div) == 0;
+    }
+private:
+    double m_div;
 };
 
 // 5.26
@@ -804,6 +864,10 @@ typename SchemaPrivate<T>::Check *SchemaPrivate<T>::createCheckPoint(const Key &
     case QStaticStringHash<'e','n','u','m'>::Hash:
         if (QString::fromLatin1("enum") == keyName)
             return new CheckEnum(this, value);
+        break;
+    case QStaticStringHash<'d','i','v','i','s','i','b','l','e','b','y'>::Hash:
+        if (QString::fromLatin1("divisibleby") == keyName)
+            return new CheckDivisibleBy(this, value);
         break;
     case QStaticStringHash<'$','r','e','f'>::Hash:
         if (QString::fromLatin1("$ref") == keyName)

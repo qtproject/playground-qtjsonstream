@@ -55,28 +55,39 @@ private slots:
     void testTypeValidation();
     // 5.2 properties
     void testProperitesValidation();
+    // TODO: 5.3 patternProperties
+    // TODO: 5.4 additionalProperties
     // 5.5 items
     void testItemsValidation();
+    // TODO: 5.6 additionalItems
     // 5.7
     void testRequiredValidation();
+    // TODO: 5.8 dependencies
     // 5.9, 5.10
     void testMinimumMaximumValidation();
     // 5.11, 5.12
     void testExclusiveMinimumExclusiveMaximumValidation();
     // 5.13, 5.14
     void testMinMaxItemsValidation();
+    // TODO: 5.15 uniqueItems
     // 5.16
     void testPatternValidation();
     // 5.17, 5.18
     void testMinMaxLengthValidation();
     // 5.19
     void testEnum();
+    // TODO: 5.20 default
     // 5.21
     void testTitleValidation();
     // 5.22
     void testDescriptionValidation();
+    // TODO: 5.23 format
+    // 5.24
+    void testDivisibleByValidation();
+    // TODO: 5.25 disallow
     // 5.26
     void testExtendsValidation();
+    // TODO: 5.27 id
     // 5.28
     void testRefValidation();
 
@@ -230,27 +241,27 @@ void tst_JsonSchema::testMinimumMaximumValidation()
 // 5.11, 5.12
 void tst_JsonSchema::testExclusiveMinimumExclusiveMaximumValidation()
 {
-    //true
-    QVERIFY(!validate(QJsonValue(0), "{ \"exclusiveMinimum\" : false, \"exclusiveMaximum\" : false }"));  //illegal
- /*FIX   QVERIFY(validate(QJsonValue(1), "{ \"minimum\" : 1, \"maximum\" : 10, \"exclusiveMinimum\" : false, \"exclusiveMaximum\" : false }"));
+    //valid
+    QVERIFY(validate(QJsonValue(1), "{ \"minimum\" : 1, \"maximum\" : 10, \"exclusiveMinimum\" : false, \"exclusiveMaximum\" : false }"));
     QVERIFY(validate(QJsonValue(5), "{ \"minimum\" : 1, \"maximum\" : 10, \"exclusiveMinimum\" : false, \"exclusiveMaximum\" : false  }"));
     QVERIFY(validate(QJsonValue(10), "{ \"minimum\" : 1, \"maximum\" : 10, \"exclusiveMinimum\" : false, \"exclusiveMaximum\" : false  }"));
     QVERIFY(validate(QJsonValue(1), "{ \"minimum\" : 1, \"maximum\" : 1, \"exclusiveMinimum\" : false, \"exclusiveMaximum\" : false  }"));
 
+    // invalid
     QVERIFY(!validate(QJsonValue(0), "{ \"minimum\" : 1, \"maximum\" : 10, \"exclusiveMinimum\" : false, \"exclusiveMaximum\" : false  }"));
     QVERIFY(!validate(QJsonValue(11), "{ \"minimum\" : 1, \"maximum\" : 10, \"exclusiveMinimum\" : false, \"exclusiveMaximum\" : false  }"));
 
-    //false
-    QVERIFY(!validate(QJsonValue(0), "{ \"exclusiveMinimum\" : true, \"exclusiveMaximum\" : true }"));  //illegal
+    //valid
     QVERIFY(validate(QJsonValue(1.0001), "{ \"minimum\" : 1, \"maximum\" : 10, \"exclusiveMinimum\" : true, \"exclusiveMaximum\" : true  }"));
     QVERIFY(validate(QJsonValue(5), "{ \"minimum\" : 1, \"maximum\" : 10, \"exclusiveMinimum\" : true, \"exclusiveMaximum\" : true  }"));
     QVERIFY(validate(QJsonValue(9.9999), "{ \"minimum\" : 1, \"maximum\" : 10, \"exclusiveMinimum\" : true, \"exclusiveMaximum\" : true  }"));
 
+    // invalid
     QVERIFY(!validate(QJsonValue(1), "{ \"minimum\" : 1, \"maximum\" : 10, \"exclusiveMinimum\" : true, \"exclusiveMaximum\" : true }"));
     QVERIFY(!validate(QJsonValue(10), "{ \"minimum\" : 1, \"maximum\" : 10, \"exclusiveMinimum\" : true, \"exclusiveMaximum\" : true  }"));
     QVERIFY(!validate(QJsonValue(1), "{ \"minimum\" : 1, \"maximum\" : 1, \"exclusiveMinimum\" : true, \"exclusiveMaximum\" : true  }"));
     QVERIFY(!validate(QJsonValue(0), "{ \"minimum\" : 1, \"maximum\" : 10, \"exclusiveMinimum\" : true, \"exclusiveMaximum\" : true  }"));
-    QVERIFY(!validate(QJsonValue(11), "{ \"minimum\" : 1, \"maximum\" : 10, \"exclusiveMinimum\" : true, \"exclusiveMaximum\" : true  }"));*/
+    QVERIFY(!validate(QJsonValue(11), "{ \"minimum\" : 1, \"maximum\" : 10, \"exclusiveMinimum\" : true, \"exclusiveMaximum\" : true  }"));
 }
 
 // 5.13, 5.14
@@ -330,6 +341,22 @@ void tst_JsonSchema::testTitleValidation()
 void tst_JsonSchema::testDescriptionValidation()
 {
 }
+
+// 5.24
+void tst_JsonSchema::testDivisibleByValidation()
+{
+    QVERIFY(validate(QJsonValue(0), "{ \"divisibleBy\" : 1 }"));
+    QVERIFY(validate(QJsonValue(10), "{ \"divisibleBy\" : 5 }"));
+    QVERIFY(validate(QJsonValue(10), "{ \"divisibleBy\" : 10 }"));
+    QVERIFY(validate(QJsonValue(0), "{ \"divisibleBy\" : 2.5 }"));
+    QVERIFY(validate(QJsonValue(5), "{ \"divisibleBy\" : 2.5 }"));
+    QVERIFY(validate(QJsonValue(7.5), "{ \"divisibleBy\" : 2.5 }"));
+
+    QVERIFY(!validate(QJsonValue(0), "{ \"divisibleBy\" : 0 }"));
+    QVERIFY(!validate(QJsonValue(7), "{ \"divisibleBy\" : 5 }"));
+    QVERIFY(!validate(QJsonValue(4.5), "{ \"divisibleBy\" : 2 }"));
+    QVERIFY(!validate(QJsonValue(7.5), "{ \"divisibleBy\" : 1.8 }"));
+};
 
 // 5.26
 void tst_JsonSchema::testExtendsValidation()
