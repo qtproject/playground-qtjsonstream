@@ -49,10 +49,22 @@
 #include "jsonauthority.h"
 #include "jsonserverclient.h"
 
+#include "schemavalidator.h"
+
 #include <QtCore>
 #include <QtNetwork>
 
 QT_BEGIN_NAMESPACE_JSONSTREAM
+
+
+/*!
+  \internal
+*/
+inline bool canValidate(JsonServer::ValidatorFlags flags, SchemaValidator *validator)
+{
+    return flags != JsonServer::NoValidation && validator && !validator->isEmpty();
+}
+
 
 /**************************************************************************************************/
 
@@ -99,7 +111,10 @@ QT_BEGIN_NAMESPACE_JSONSTREAM
 */
 JsonServer::JsonServer(QObject *parent)
     : QObject(parent)
+    , m_inboundValidator(0)
+    , m_outboundValidator(0)
 {
+    initSchemaValidation(); // initialize validation if defined by environment
 }
 
 /*!
@@ -236,6 +251,19 @@ void JsonServer::handleAuthorizationFailed()
 */
 void JsonServer::receiveMessage(const QString &identifier, const QJsonObject &message)
 {
+    // do JSON schema validation if required
+    if (canValidate(validatorFlags(), m_inboundValidator)) {
+        if (!m_inboundValidator->validateSchema(message))
+        {
+            if (validatorFlags().testFlag(WarnIfInvalid)) {
+                emit inboundMessageValidationFailed(message);
+            }
+            if (validatorFlags().testFlag(DropIfInvalid)) {
+                return;
+            }
+        }
+    }
+
     emit messageReceived(identifier, message);
 }
 
@@ -335,6 +363,19 @@ void JsonServer::disableMultipleConnections(const QString& identifier)
 */
 bool JsonServer::send(const QString &identifier, const QJsonObject &message)
 {
+    // do JSON schema validation if required
+    if (canValidate(validatorFlags(), m_outboundValidator)) {
+        if (!m_outboundValidator->validateSchema(message))
+        {
+            if (validatorFlags().testFlag(WarnIfInvalid)) {
+                emit outboundMessageValidationFailed(message);
+            }
+            if (validatorFlags().testFlag(DropIfInvalid)) {
+                return false;
+            }
+        }
+    }
+
     if (isQueuingEnabled(identifier)) {
         QList<QJsonObject> queue = m_messageQueues.value(identifier);
         queue << message;
@@ -356,6 +397,19 @@ bool JsonServer::send(const QString &identifier, const QJsonObject &message)
 
 void JsonServer::broadcast(const QJsonObject &message)
 {
+    // do JSON schema validation if required
+    if (canValidate(validatorFlags(), m_outboundValidator)) {
+        if (!m_outboundValidator->validateSchema(message))
+        {
+            if (validatorFlags().testFlag(WarnIfInvalid)) {
+                emit outboundMessageValidationFailed(message);
+            }
+            if (validatorFlags().testFlag(DropIfInvalid)) {
+                return;
+            }
+        }
+    }
+
     // ### No JsonServerClient should be repeated in this list
     QList<JsonServerClient*> clients = m_identifierToClient.values();
     foreach (JsonServerClient *client, clients) {
@@ -382,6 +436,84 @@ void JsonServer::removeConnection(const QString &identifier)
     }
 }
 
+/*!
+     \enum JsonServer::ValidatorFlags
+     \value NoValidation
+         No JSON schema validation of inbound or outbound messages
+     \value DropIfInvalid
+         Validate and drop invalid messages.
+     \value WarnIfInvalid
+         Validate and warn about invalid messages.
+     \value ApplyDefaultValues
+         If a value is missing then use a default attribute's value fron JSON schema.
+*/
+
+/*!
+  Sets validatorFlags property to \a flags.
+*/
+void JsonServer::setValidatorFlags(ValidatorFlags flags)
+{
+    m_validatorFlags = flags;
+}
+
+/*!
+  Returns an inbound JSON schema validator object.
+*/
+SchemaValidator *JsonServer::inboundValidator()
+{
+    if (!m_inboundValidator) {
+        m_inboundValidator = new SchemaValidator(this);
+    }
+    return m_inboundValidator;
+}
+
+/*!
+  Returns an outbound JSON schema validator object.
+*/
+SchemaValidator *JsonServer::outboundValidator()
+{
+    if (!m_outboundValidator) {
+        m_outboundValidator = new SchemaValidator(this);
+    }
+    return m_outboundValidator;
+}
+
+/*!
+  \internal
+  Initialize validation if defined by environment
+*/
+void JsonServer::initSchemaValidation()
+{
+    QByteArray szInboundPath(qgetenv("JSONSERVER_SCHEMA_INBOUND_PATH"));
+    QByteArray szOutboundPath(qgetenv("JSONSERVER_SCHEMA_OUTBOUND_PATH"));
+    QString strSchemaControl(qgetenv("JSONSERVER_SCHEMA_CONTROL")); // "warn","drop" or "warn":"drop"
+
+    if (!strSchemaControl.isEmpty())
+    {
+        ValidatorFlags flags(NoValidation);
+        foreach (QString str, strSchemaControl.toLower().split(QRegExp("[,:]"), QString::SkipEmptyParts)) {
+            if (str == "warn")
+                flags |= WarnIfInvalid;
+            else if (str == "drop")
+                flags |= DropIfInvalid;
+        }
+        setValidatorFlags(flags);
+    }
+
+    if (!szInboundPath.isEmpty()) {
+        QFileInfo fi(szInboundPath);
+        if (fi.exists() && fi.isDir()) {
+            inboundValidator()->loadFromFolder(szInboundPath);
+        }
+    }
+
+    if (!szOutboundPath.isEmpty()) {
+        QFileInfo fi(szOutboundPath);
+        if (fi.exists() && fi.isDir()) {
+            outboundValidator()->loadFromFolder(szOutboundPath);
+        }
+    }
+}
 
 /*!
     \fn void JsonServer::connectionAdded(const QString &identifier)
@@ -405,6 +537,16 @@ void JsonServer::removeConnection(const QString &identifier)
 /*!
     \fn void JsonServer::authorizationFailed()
     This signal is emitted when a client fails to authorize.
+*/
+
+/*!
+    \fn void JsonServer::inboundMessageValidationFailed(const QJsonObject &message)
+    This signal is emitted when an inbound \a message message fails a JSON schema validation.
+*/
+
+/*!
+    \fn void JsonServer::outboundMessageValidationFailed(const QJsonObject &message)
+    This signal is emitted when an outbound \a message message fails a JSON schema validation.
 */
 
 #include "moc_jsonserver.cpp"

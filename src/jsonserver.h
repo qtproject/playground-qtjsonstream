@@ -56,6 +56,7 @@ QT_BEGIN_NAMESPACE_JSONSTREAM
 class JsonStream;
 class JsonAuthority;
 class JsonServerClient;
+class SchemaValidator;
 
 class Q_ADDON_JSONSTREAM_EXPORT JsonServer : public QObject
 {
@@ -78,6 +79,23 @@ public:
     void enableMultipleConnections(const QString& identifier);
     void disableMultipleConnections(const QString& identifier);
 
+    // schema validation
+    enum ValidatorFlag {
+        NoValidation = 0x0,
+        DropIfInvalid = 0x1,
+        WarnIfInvalid = 0x2,
+        ApplyDefaultValues = 0x4 // TODO
+    };
+    Q_DECLARE_FLAGS(ValidatorFlags, ValidatorFlag)
+
+    Q_PROPERTY(ValidatorFlags validatorFlags READ validatorFlags WRITE setValidatorFlags)
+
+    ValidatorFlags validatorFlags() const { return m_validatorFlags; }
+    void setValidatorFlags(ValidatorFlags);
+
+    SchemaValidator *inboundValidator();
+    SchemaValidator *outboundValidator();
+
 public slots:
     bool hasConnection(const QString &identifier) const;
     bool send(const QString &identifier, const QJsonObject& message);
@@ -90,6 +108,9 @@ signals:
     void messageReceived(const QString &identifier, const QJsonObject &message);
     void authorizationFailed();
 
+    void inboundMessageValidationFailed(const QJsonObject &message);
+    void outboundMessageValidationFailed(const QJsonObject &message);
+
 protected slots:
     virtual void handleClientAuthorized(const QString &identifier);
     virtual void handleAuthorizationFailed();
@@ -100,10 +121,16 @@ private slots:
     void handleLocalConnection();
 
 private:
+    void initSchemaValidation();
+
+private:
     QMap<QLocalServer *, JsonAuthority *>  m_localServers;
     QMultiMap<QString, JsonServerClient *> m_identifierToClient;
     QMap<QString, QList<QJsonObject> >     m_messageQueues;
     QSet<QString>                          m_multipleConnections;
+    ValidatorFlags                         m_validatorFlags;
+    SchemaValidator                       *m_inboundValidator;
+    SchemaValidator                       *m_outboundValidator;
 };
 
 QT_END_NAMESPACE_JSONSTREAM

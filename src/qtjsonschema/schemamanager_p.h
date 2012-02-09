@@ -72,6 +72,7 @@ public:
 
     QStringList names() const { return m_schemas.keys(); }
 
+    bool isEmpty() const { return m_schemas.isEmpty(); }
     void clear() { m_schemas.clear(); }
 
 private:

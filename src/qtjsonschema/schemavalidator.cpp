@@ -113,6 +113,14 @@ SchemaError SchemaValidator::getLastError() const
 }
 
 /*!
+    Returns true if there are no schemas in the validator
+*/
+bool SchemaValidator::isEmpty() const
+{
+    return d_ptr->mSchemas.isEmpty();
+}
+
+/*!
     Returns the list of initialized schemas in the validator
 */
 QStringList SchemaValidator::schemaNames() const
@@ -314,11 +322,22 @@ QJsonObject SchemaValidator::_loadFromData(const QByteArray & json, const QStrin
     Returns true at success, otherwise getLastError() can be used to access
     a detailed error information.
 */
-bool SchemaValidator::validateSchema(const QString &schemaName, QJsonObject object)
+bool SchemaValidator::validateSchema(const QString &schemaName, const QJsonObject &object)
 {
     Q_D(SchemaValidator);
     d->mLastError = d->mSchemas.validate(schemaName, object);
     return SchemaError::NoError == d->mLastError.errorCode();
+}
+
+/*!
+    Validates \a object with schemas in the validator.
+    Returns true at success, otherwise getLastError() can be used to access
+    a detailed error information.
+*/
+bool SchemaValidator::validateSchema(const QJsonObject &object)
+{
+    // TODO
+    return SchemaError::NoError;
 }
 
 /*!

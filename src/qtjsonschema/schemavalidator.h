@@ -66,10 +66,12 @@ public:
     bool loadFromFolder(const QString &, const QString & = QString::null, const QByteArray & ext = "json");
     bool loadFromData(const QByteArray &, const QString &, SchemaNameInitialization = UseParameter);
 
-    bool validateSchema(const QString &schemaName, QJsonObject object);
+    bool validateSchema(const QString &schemaName, const QJsonObject &object);
+    bool validateSchema(const QJsonObject &object);
 
     SchemaError getLastError() const;
 
+    bool isEmpty() const;
     QStringList schemaNames() const;
     bool hasSchema(const QString &);
     void removeSchema(const QString &);
