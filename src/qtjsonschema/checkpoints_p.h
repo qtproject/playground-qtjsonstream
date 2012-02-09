@@ -95,8 +95,8 @@ private:
 template<class T>
 class SchemaPrivate<T>::NullCheck : public Check {
 public:
-    NullCheck(SchemaPrivate *schema)
-        : Check(schema, "") // TODO
+    NullCheck(SchemaPrivate *schema, QSharedPointer<CheckSharedData> &data)
+        : Check(schema, data, "") // TODO
     {}
 protected:
     virtual bool doCheck(const Value&) { return true; }
@@ -115,8 +115,8 @@ class SchemaPrivate<T>::CheckType : public Check {
                AnyType = 0x0080,
                UnknownType = 0};
 public:
-    CheckType(SchemaPrivate *schema, const Value& type)
-        : Check(schema, "Type check failed for %1")
+    CheckType(SchemaPrivate *schema, QSharedPointer<CheckSharedData> &data, const Value& type)
+        : Check(schema, data, "Type check failed for %1")
         , m_type(UnknownType)
     {
         bool ok;
@@ -260,8 +260,8 @@ private:
 template<class T>
 class SchemaPrivate<T>::CheckProperties : public Check {
 public:
-    CheckProperties(SchemaPrivate *schema, const Value &properties)
-        : Check(schema, "Properties check failed for %1")
+    CheckProperties(SchemaPrivate *schema, QSharedPointer<CheckSharedData> &data, const Value &properties)
+        : Check(schema, data, "Properties check failed for %1")
     {
         bool ok;
         const Object obj = properties.toObject(&ok);
@@ -276,11 +276,14 @@ public:
             const Object propertyChecks = obj.property(propertyName).toObject(&ok);
 //            qDebug() << "    propertyChecks:" << propertyChecks;
 
+            // create object to share data between attribures of a property
+            QSharedPointer<CheckSharedData> data(new CheckSharedData());
+
             Q_ASSERT(ok);
             foreach (const Key &key, propertyChecks.propertyNames()) {
 //                bool ok;
 //                qDebug() << "        key:" << key << this << propertyChecks.property(key).toString(&ok)<< propertyChecks.property(key).toInt(&ok);
-                checks.append(schema->createCheckPoint(key, propertyChecks.property(key)));
+                checks.append(schema->createCheckPoint(key, propertyChecks.property(key), data));
             }
             m_checks.insert(propertyName, checks);
         }
@@ -326,8 +329,8 @@ private:
 template<class T>
 class SchemaPrivate<T>::CheckItems : public Check {
 public:
-    CheckItems(SchemaPrivate *schemap, const Value &schema)
-        : Check(schemap, "Items check failed for %1")
+    CheckItems(SchemaPrivate *schemap, QSharedPointer<CheckSharedData> &data, const Value &schema)
+        : Check(schemap, data, "Items check failed for %1")
     {
         // qDebug()  << Q_FUNC_INFO << this;
         bool ok;
@@ -360,8 +363,8 @@ private:
 template<class T>
 class SchemaPrivate<T>::CheckRequired : public Check {
 public:
-    CheckRequired(SchemaPrivate *schema, const Value &required)
-        : Check(schema, "Check required field")  // TODO what to do about Required ?
+    CheckRequired(SchemaPrivate *schema, QSharedPointer<CheckSharedData> &data, const Value &required)
+        : Check(schema, data, "Check required field")  // TODO what to do about Required ?
     {
         bool ok;
         m_req = required.toBoolean(&ok);
@@ -397,8 +400,8 @@ private:
 template<class T>
 class SchemaPrivate<T>::CheckMinimum : public Check {
 public:
-    CheckMinimum(SchemaPrivate *schema, const Value &minimum)
-        : Check(schema, "Minimum check failed for %1")
+    CheckMinimum(SchemaPrivate *schema, QSharedPointer<CheckSharedData> &data, const Value &minimum)
+        : Check(schema, data, "Minimum check failed for %1")
     {
         bool ok;
         m_min = minimum.toDouble(&ok);
@@ -409,7 +412,7 @@ public:
     {
         bool ok;
         double d = value.toDouble(&ok);
-        return ok && (Check::m_schema->m_flags.testFlag(ExclusiveMinimum) ? d > m_min : d >= m_min);
+        return ok && (Check::m_data->m_flags.testFlag(CheckSharedData::ExclusiveMinimum) ? d > m_min : d >= m_min);
     }
 private:
     double m_min;
@@ -419,8 +422,8 @@ private:
 template<class T>
 class SchemaPrivate<T>::CheckMaximum : public Check {
 public:
-    CheckMaximum(SchemaPrivate *schema, const Value &maximum)
-        : Check(schema, "Maximum check failed for %1")
+    CheckMaximum(SchemaPrivate *schema, QSharedPointer<CheckSharedData> &data, const Value &maximum)
+        : Check(schema, data, "Maximum check failed for %1")
     {
         // qDebug()  << Q_FUNC_INFO << this;
         bool ok;
@@ -433,7 +436,7 @@ public:
         //qDebug() << Q_FUNC_INFO << value << m_max << this;
         bool ok;
         double d = value.toDouble(&ok);
-        return ok && (Check::m_schema->m_flags.testFlag(ExclusiveMaximum) ? d < m_max : d <= m_max);
+        return ok && (Check::m_data->m_flags.testFlag(CheckSharedData::ExclusiveMaximum) ? d < m_max : d <= m_max);
     }
 private:
     double m_max;
@@ -444,8 +447,8 @@ private:
 template<class T>
 class SchemaPrivate<T>::CheckExclusiveMinimum : public Check {
 public:
-    CheckExclusiveMinimum(SchemaPrivate *schema, const Value &_value)
-        : Check(schema, "Exclusive minimum check failed for %1")
+    CheckExclusiveMinimum(SchemaPrivate *schema, QSharedPointer<CheckSharedData> &data, const Value &_value)
+        : Check(schema, data, "Exclusive minimum check failed for %1")
     {
         bool ok;
         bool bExclusive = _value.toBoolean(&ok);
@@ -465,7 +468,7 @@ public:
         Q_ASSERT(ok);
 
         if (bExclusive) {
-            Check::m_schema->m_flags |= ExclusiveMinimum;
+            Check::m_data->m_flags |= CheckSharedData::ExclusiveMinimum;
         }
     }
 
@@ -481,8 +484,8 @@ private:
 template<class T>
 class SchemaPrivate<T>::CheckExclusiveMaximum : public Check {
 public:
-    CheckExclusiveMaximum(SchemaPrivate *schema, const Value &_value)
-        : Check(schema, "Exclusive minimum check failed for %1")
+    CheckExclusiveMaximum(SchemaPrivate *schema, QSharedPointer<CheckSharedData> &data, const Value &_value)
+        : Check(schema, data, "Exclusive minimum check failed for %1")
     {
         bool ok;
         bool bExclusive = _value.toBoolean(&ok);
@@ -502,7 +505,7 @@ public:
         Q_ASSERT(ok);
 
         if (bExclusive) {
-            Check::m_schema->m_flags |= ExclusiveMaximum;
+            Check::m_data->m_flags |= CheckSharedData::ExclusiveMaximum;
         }
     }
 
@@ -518,8 +521,8 @@ private:
 template<class T>
 class SchemaPrivate<T>::CheckMinItems : public Check {
 public:
-    CheckMinItems(SchemaPrivate *schema, const Value& minimum)
-        : Check(schema, "Minimum item count check failed for %1")
+    CheckMinItems(SchemaPrivate *schema, QSharedPointer<CheckSharedData> &data, const Value& minimum)
+        : Check(schema, data, "Minimum item count check failed for %1")
     {
         bool ok;
         m_min = minimum.toInt(&ok);
@@ -540,8 +543,8 @@ private:
 template<class T>
 class SchemaPrivate<T>::CheckMaxItems : public Check {
 public:
-    CheckMaxItems(SchemaPrivate *schema, const Value& maximum)
-        : Check(schema, "Maximum item count check failed for %1")
+    CheckMaxItems(SchemaPrivate *schema, QSharedPointer<CheckSharedData> &data, const Value& maximum)
+        : Check(schema, data, "Maximum item count check failed for %1")
     {
         bool ok;
         m_max = maximum.toInt(&ok);
@@ -563,8 +566,8 @@ private:
 template<class T>
 class SchemaPrivate<T>::CheckPattern : public Check {
 public:
-    CheckPattern(SchemaPrivate *schema, const Value& patternValue)
-        : Check(schema, "Pattern check failed for %1")
+    CheckPattern(SchemaPrivate *schema, QSharedPointer<CheckSharedData> &data, const Value& patternValue)
+        : Check(schema, data, "Pattern check failed for %1")
     {
         bool ok;
         QString patternString = patternValue.toString(&ok);
@@ -591,8 +594,8 @@ private:
 template<class T>
 class SchemaPrivate<T>::CheckMinLength : public Check {
 public:
-    CheckMinLength(SchemaPrivate *schema, const Value& min)
-        : Check(schema, "Minimal string length check failed for %1")
+    CheckMinLength(SchemaPrivate *schema, QSharedPointer<CheckSharedData> &data, const Value& min)
+        : Check(schema, data, "Minimal string length check failed for %1")
     {
         bool ok;
         m_min = min.toInt(&ok);
@@ -619,8 +622,8 @@ private:
 template<class T>
 class SchemaPrivate<T>::CheckMaxLength : public Check {
 public:
-    CheckMaxLength(SchemaPrivate *schema, const Value& max)
-        : Check(schema, "Maximal string length check failed for %1")
+    CheckMaxLength(SchemaPrivate *schema, QSharedPointer<CheckSharedData> &data, const Value& max)
+        : Check(schema, data, "Maximal string length check failed for %1")
     {
         bool ok;
         m_max = max.toInt(&ok);
@@ -647,8 +650,8 @@ private:
 template<class T>
 class SchemaPrivate<T>::CheckEnum : public Check {
 public:
-    CheckEnum(SchemaPrivate *schema, const Value& value)
-        : Check(schema, "Enum check failed for %1")
+    CheckEnum(SchemaPrivate *schema, QSharedPointer<CheckSharedData> &data, const Value& value)
+        : Check(schema, data, "Enum check failed for %1")
     {
         bool ok;
         m_enum = value.toList(&ok);
@@ -674,8 +677,8 @@ private:
 template<class T>
 class SchemaPrivate<T>::CheckDivisibleBy : public Check {
 public:
-    CheckDivisibleBy(SchemaPrivate *schema, const Value &value)
-        : Check(schema, "DivisibleBy check failed for %1")
+    CheckDivisibleBy(SchemaPrivate *schema, QSharedPointer<CheckSharedData> &data, const Value &value)
+        : Check(schema, data, "DivisibleBy check failed for %1")
     {
         // qDebug()  << Q_FUNC_INFO << this;
         bool ok;
@@ -698,8 +701,8 @@ private:
 template<class T>
 class SchemaPrivate<T>::CheckExtends : public Check {
 public:
-    CheckExtends(SchemaPrivate *schema, const Value &value)
-        : Check(schema, "Extends check failed for %1")
+    CheckExtends(SchemaPrivate *schema, QSharedPointer<CheckSharedData> &data, const Value &value)
+        : Check(schema, data, "Extends check failed for %1")
     {
         // FIXME
         // Keep in mind that there is a bug in spec. (internet draft 3).
@@ -744,8 +747,8 @@ private:
 template<class T>
 class SchemaPrivate<T>::CheckRef : public Check {
 public:
-    CheckRef(SchemaPrivate *schema, const Value &value)
-        : Check(schema, "$Ref check failed for %1")
+    CheckRef(SchemaPrivate *schema, QSharedPointer<CheckSharedData> &data, const Value &value)
+        : Check(schema, data, "$Ref check failed for %1")
     {
         // TODO according to spec we should replace existing check by this one
         // I'm not sure what does it mean. Should we remove other checks?
@@ -777,21 +780,21 @@ private:
 template<class T>
 class SchemaPrivate<T>::CheckDescription : public NullCheck {
 public:
-    CheckDescription(SchemaPrivate *schema)
-        : NullCheck(schema)
+    CheckDescription(SchemaPrivate *schema, QSharedPointer<CheckSharedData> &data)
+        : NullCheck(schema, data)
     {}
 };
 
 template<class T>
 class SchemaPrivate<T>::CheckTitle : public NullCheck {
 public:
-    CheckTitle(SchemaPrivate *schema)
-        : NullCheck(schema)
+    CheckTitle(SchemaPrivate *schema, QSharedPointer<CheckSharedData> &data)
+        : NullCheck(schema, data)
     {}
 };
 
 template<class T>
-typename SchemaPrivate<T>::Check *SchemaPrivate<T>::createCheckPoint(const Key &key, const Value &value)
+typename SchemaPrivate<T>::Check *SchemaPrivate<T>::createCheckPoint(const Key &key, const Value &value, QSharedPointer<CheckSharedData> &data)
 {
     QString keyName = key;
     keyName = keyName.toLower();
@@ -803,89 +806,89 @@ typename SchemaPrivate<T>::Check *SchemaPrivate<T>::createCheckPoint(const Key &
     switch (hash) {
     case QStaticStringHash<'r','e','q','u','i','r','e','d'>::Hash:
         if (QString::fromLatin1("required") == keyName)
-            return new CheckRequired(this, value);
+            return new CheckRequired(this, data, value);
         break;
     case QStaticStringHash<'m','a','x','i','m','u','m'>::Hash:
         if (QString::fromLatin1("maximum") == keyName)
-            return new CheckMaximum(this, value);
+            return new CheckMaximum(this, data, value);
         break;
     case QStaticStringHash<'e','x','c','l','u','s','i','v','e','m','a','x','i','m','u','m'>::Hash:
         if (QString::fromLatin1("exclusivemaximum") == keyName)
-            return new CheckExclusiveMaximum(this, value);
+            return new CheckExclusiveMaximum(this, data, value);
         break;
     case QStaticStringHash<'m','i','n','i','m','u','m'>::Hash:
         if (QString::fromLatin1("minimum") == keyName)
-            return new CheckMinimum(this, value);
+            return new CheckMinimum(this, data, value);
         break;
     case QStaticStringHash<'e','x','c','l','u','s','i','v','e','m','i','n','i','m','u','m'>::Hash:
         if (QString::fromLatin1("exclusiveminimum") == keyName)
-            return new CheckExclusiveMinimum(this, value);
+            return new CheckExclusiveMinimum(this, data, value);
         break;
     case QStaticStringHash<'p','r','o','p','e','r','t','i','e','s'>::Hash:
         if (QString::fromLatin1("properties") == keyName)
-            return new CheckProperties(this, value);
+            return new CheckProperties(this, data, value);
         break;
     case QStaticStringHash<'d','e','s','c','r','i','p','t','i','o','n'>::Hash:
         if (QString::fromLatin1("description") == keyName)
-            return new CheckDescription(this);
+            return new CheckDescription(this, data);
         break;
     case QStaticStringHash<'t','i','t','l','e'>::Hash:
         if (QString::fromLatin1("title") == keyName)
-            return new CheckTitle(this);
+            return new CheckTitle(this, data);
         break;
     case QStaticStringHash<'m','a','x','i','t','e','m','s'>::Hash:
         if (QString::fromLatin1("maxitems") == keyName)
-            return new CheckMaxItems(this,value);
+            return new CheckMaxItems(this, data, value);
         break;
     case QStaticStringHash<'m','i','n','i','t','e','m','s'>::Hash:
         if (QString::fromLatin1("minitems") == keyName)
-            return new CheckMinItems(this,value);
+            return new CheckMinItems(this, data, value);
         break;
     case QStaticStringHash<'i','t','e','m','s'>::Hash:
         if (QString::fromLatin1("items") == keyName)
-            return new CheckItems(this,value);
+            return new CheckItems(this, data, value);
         break;
     case QStaticStringHash<'e','x','t','e','n','d','s'>::Hash:
         if (QString::fromLatin1("extends") == keyName)
-            return new CheckExtends(this,value);
+            return new CheckExtends(this, data, value);
         break;
     case QStaticStringHash<'p','a','t','t','e','r','n'>::Hash:
         if (QString::fromLatin1("pattern") == keyName)
-            return new CheckPattern(this, value);
+            return new CheckPattern(this, data, value);
         break;
     case QStaticStringHash<'m','i','n','l','e','n','g','t','h'>::Hash:
         if (QString::fromLatin1("minlength") == keyName)
-            return new CheckMinLength(this, value);
+            return new CheckMinLength(this, data, value);
         break;
     case QStaticStringHash<'m','a','x','l','e','n','g','t','h'>::Hash:
         if (QString::fromLatin1("maxlength") == keyName)
-            return new CheckMaxLength(this, value);
+            return new CheckMaxLength(this, data, value);
         break;
     case QStaticStringHash<'e','n','u','m'>::Hash:
         if (QString::fromLatin1("enum") == keyName)
-            return new CheckEnum(this, value);
+            return new CheckEnum(this, data, value);
         break;
     case QStaticStringHash<'d','i','v','i','s','i','b','l','e','b','y'>::Hash:
         if (QString::fromLatin1("divisibleby") == keyName)
-            return new CheckDivisibleBy(this, value);
+            return new CheckDivisibleBy(this, data, value);
         break;
     case QStaticStringHash<'$','r','e','f'>::Hash:
         if (QString::fromLatin1("$ref") == keyName)
-            return new CheckRef(this, value);
+            return new CheckRef(this, data, value);
         break;
     case QStaticStringHash<'t','y','p','e'>::Hash:
         if (QString::fromLatin1("type") == keyName)
-            return new CheckType(this, value);
+            return new CheckType(this, data, value);
         break;
     default:
 //        qDebug() << "NOT FOUND"  << keyName;
-        return new NullCheck(this);
+        return new NullCheck(this, data);
     }
 
 //    qDebug() << "FALLBACK"  << keyName;
 //    bool  ok;
 //    qCritical() << keyName << value.toString(&ok);
-    return new NullCheck(this);
+    return new NullCheck(this, data);
 }
 
 template<class T>

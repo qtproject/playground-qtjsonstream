@@ -114,7 +114,8 @@ void tst_JsonSchema::schemaTest()
 
     // Create an item that matches the schema
     QJsonObject item;
-    item.insert("create-test", 22);
+    item.insert("create-test", 11);
+    item.insert("create-test0", 1);
     item.insert("another-field", QLatin1String("a string"));
 
     result = validator.validateSchema("SchemaTestObject", item);

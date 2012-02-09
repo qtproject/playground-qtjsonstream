@@ -4,7 +4,14 @@
     "properties": {
         "create-test": {
             "type": "number",
-            "required": true
+            "required": true,
+            "minimum": 10,
+            "exclusiveMinimum": true
+        },
+        "create-test0": {
+            "type": "number",
+            "required": true,
+            "minimum": 1
         },
         "another-field": {
             "type": "string",

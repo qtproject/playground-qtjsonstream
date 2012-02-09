@@ -45,6 +45,7 @@
 #include <QtCore/qstring.h>
 #include <QtCore/qhash.h>
 #include <QtCore/qshareddata.h>
+#include <QtCore/qsharedpointer.h>
 
 QT_BEGIN_HEADER
 
@@ -138,10 +139,25 @@ class SchemaPrivate : public QSharedData
     typedef typename Schema<T>::ValueList ValueList;
     typedef typename Schema<T>::Service Service;
 
+    // this class is used to exchange information between attributes of a property
+    // one instance is created for each schema property
+    class CheckSharedData
+    {
+    public:
+        enum Flag {
+            NoFlags = 0x0,
+            ExclusiveMinimum = 0x1,
+            ExclusiveMaximum = 0x2
+        };
+        Q_DECLARE_FLAGS(Flags, Flag)
+        Flags m_flags;
+    };
+
     class Check {
     public:
-        Check(SchemaPrivate *schema, const char* errorMessage)
+        Check(SchemaPrivate *schema, QSharedPointer<CheckSharedData> &data, const char* errorMessage)
             : m_schema(schema)
+            , m_data(data)
             , m_errorMessage(errorMessage)
         {
             Q_ASSERT(schema);
@@ -162,6 +178,8 @@ class SchemaPrivate : public QSharedData
 
     protected:
         SchemaPrivate *m_schema;
+        QSharedPointer<CheckSharedData> m_data; // is used to exchange information between attributes
+
         // return true if it is ok
         virtual bool doCheck(const Value&) = 0;
     private:
@@ -208,7 +226,7 @@ class SchemaPrivate : public QSharedData
     class CheckRef;
     class CheckDescription;
 
-    inline Check *createCheckPoint(const Key &key, const Value &value);
+    inline Check *createCheckPoint(const Key &key, const Value &value, QSharedPointer<CheckSharedData> &data);
     inline bool check(const Value &value) const;
 
 public:
@@ -230,8 +248,12 @@ public:
         m_callbacks = callbackToUseForCompile;
         const QList<Key> checksKeys = schema.propertyNames();
         m_checks.reserve(checksKeys.count());
+
+        // create object to share data between attribures of a property
+        QSharedPointer<CheckSharedData> data(new CheckSharedData());
+
         foreach (const Key &key, checksKeys) {
-            m_checks.append(createCheckPoint(key, schema.property(key)));
+            m_checks.append(createCheckPoint(key, schema.property(key), data));
         }
         m_callbacks = 0;
     }
@@ -241,15 +263,6 @@ public:
         // we have some checks so it means that something got compiled.
         return m_checks.size();
     }
-
-private:
-    enum Flag {
-            NoOptions = 0x0,
-            ExclusiveMinimum = 0x1,
-            ExclusiveMaximum = 0x2
-    };
-    Q_DECLARE_FLAGS(Flags, Flag)
-    Flags m_flags;
 
 private:
     QVarLengthArray<Check *, 4> m_checks;
