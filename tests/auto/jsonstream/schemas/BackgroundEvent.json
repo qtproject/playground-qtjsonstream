@@ -1,0 +1,19 @@
+{
+   "title": "BackgroundEvent schema",
+   "description": "Inform the application that it should clear/repaint background",
+   "type": "object",
+   "properties": {
+     "event": {"type":"string", "pattern":"BackgroundEvent", "required":true },
+     "label": {"type": "string" },
+     "image": {
+        "title": "Image to display",
+        "type": "string",
+        "format": "uri"
+     },
+     "color": {
+        "title": "Background color",
+        "type": "string",
+        "format": "color"
+     }
+   }
+ }

@@ -1,0 +1,8 @@
+{
+   "title": "ReplySuccess schema",
+   "description": "Reply a success",
+   "type": "object",
+   "properties": {
+     "event": {"type":"string", "pattern":"ReplySuccess", "required":true }
+   }
+ }

@@ -58,6 +58,7 @@ class Container : public QObject
 public:
     Container();
     void sendMessage();
+    void sendSchemaTestMessage();
 
 public slots:
     void received(const QJsonObject& message);
@@ -106,6 +107,20 @@ void Container::sendMessage()
     mClient->send(msg);
 }
 
+void Container::sendSchemaTestMessage()
+{
+    qDebug() << "sending PaintTextEvent";
+    // send paint text message
+    QJsonObject msg;
+    msg.insert("event", QLatin1String("PaintTextEvent"));
+    msg.insert("text", QLatin1String("Schema test"));
+    msg.insert("font-size", 100);
+    msg.insert("x", 25);
+    msg.insert("y", 100);
+    msg.insert("bold", true);
+    mClient->send(msg);
+}
+
 void Container::received(const QJsonObject& message)
 {
     QString command = message.value("command").toString();
@@ -135,6 +150,7 @@ main(int argc, char **argv)
     QCoreApplication app(argc, argv);
     QStringList args = QCoreApplication::arguments();
     QString progname = args.takeFirst();
+    bool bSchema = false;
     while (args.size()) {
         QString arg = args.at(0);
         if (!arg.startsWith("-"))
@@ -144,10 +160,15 @@ main(int argc, char **argv)
             gFormat = args.takeFirst();
         else if (arg == "-socket")
             gSocketname = args.takeFirst();
+        else if (arg == "-schema")
+            bSchema = true;
     }
 
     Container c;
-    c.sendMessage();
+    if (!bSchema)
+        c.sendMessage();
+    else
+        c.sendSchemaTestMessage();
     return app.exec();
 }
 

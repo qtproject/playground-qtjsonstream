@@ -1,0 +1,11 @@
+{
+   "title": "PaintLineEvent schema",
+   "extends": { "$ref": "PaintEvent" },
+   "description": "Inform the application to paint a line",
+   "type": "object",
+   "properties": {
+     "event": {"type":"string", "pattern":"PaintLineEvent", "required":true },
+     "x-end": {"type":"number", "minimum": 0, "maximum": 1024, "required":true },
+     "y-end": {"type":"number", "minimum": 0, "maximum": 768, "required":true }
+   }
+ }

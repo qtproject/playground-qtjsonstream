@@ -45,6 +45,7 @@
 #include "jsonserver.h"
 #include "jsonstream.h"
 #include "jsonuidauthority.h"
+#include "schemavalidator.h"
 
 QT_USE_NAMESPACE_JSONSTREAM
 
@@ -244,6 +245,7 @@ private slots:
     void authTest();
     void authFail();
     void formatTest();
+    void schemaTest();
 };
 
 void tst_JsonStream::initTestCase()
@@ -368,6 +370,45 @@ void tst_JsonStream::formatTest()
     }
 }
 
+void tst_JsonStream::schemaTest()
+{
+    QString strSchemasDir(QDir::currentPath() + "/" + "schemas");
+    QVERIFY(QFile::exists(strSchemasDir));
+
+    QString socketname = "/tmp/tst_socket";
+    JsonServer server;
+
+    QVERIFY(server.inboundValidator());
+    QVERIFY(server.outboundValidator());
+
+    server.setValidatorFlags(JsonServer::ValidatorFlags(JsonServer::WarnIfInvalid | JsonServer::DropIfInvalid));
+    server.inboundValidator()->loadFromFolder(strSchemasDir);
+    server.inboundValidator()->setValidationFilter(QRegExp("Paint\\w+Event|BackgroundEvent"));
+    server.inboundValidator()->setSchemaNameMatcher(new SchemaValidator::SchemaPropertyNameMatcher("event"));
+
+
+    server.outboundValidator()->loadFromFolder(strSchemasDir);
+    server.outboundValidator()->setValidationFilter(QRegExp("Reply\\w+"));
+
+    QVERIFY(!server.inboundValidator()->isEmpty());
+    QVERIFY(!server.outboundValidator()->isEmpty());
+
+    Spy spy(&server);
+    QVERIFY(server.listen(socketname));
+
+    Child child("testClient/testClient", QStringList() << "-socket" << socketname << "-schema");
+
+    spy.waitReceived();
+    qDebug() << "Got note=" << spy.lastMessage() << "from" << spy.lastSender();
+
+    QJsonObject msg;
+    msg.insert("command", QLatin1String("exit"));
+    QVERIFY(server.hasConnection(spy.lastSender()));
+    QVERIFY(server.send(spy.lastSender(), msg));
+
+    spy.waitRemoved();
+    child.waitForFinished();
+}
 
 QTEST_MAIN(tst_JsonStream)
 

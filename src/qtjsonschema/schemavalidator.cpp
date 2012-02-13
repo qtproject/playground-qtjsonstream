@@ -65,8 +65,20 @@ inline QJsonObject makeError(SchemaError::ErrorCode code, const QString &message
 class SchemaValidator::SchemaValidatorPrivate
 {
 public:
+    SchemaValidatorPrivate()
+        : m_bFiltered(false), m_matcher(0)
+    {
+
+    }
+
     SchemaManager<QJsonObject, JsonObjectTypes> mSchemas;
     SchemaError mLastError;
+
+    QRegExp m_filter;
+    bool m_bFiltered;
+    QStringList m_strsFilteredSchemas;
+
+    QSharedPointer<SchemaNameMatcher> m_matcher;
 };
 
 /*!
@@ -153,6 +165,27 @@ void SchemaValidator::clear()
 }
 
 /*!
+    Schema validation filtering - limit schemas used during validation
+    to schemas which name matches \a filter
+*/
+void SchemaValidator::setValidationFilter(const QRegExp &filter)
+{
+    d_ptr->m_filter = filter;
+    d_ptr->m_bFiltered = false; // clear last filtering result
+}
+
+/*!
+    Sets a \a matcher object which does matching between json object and schema name
+    without doing a full schema validation. This allows to do a validation without
+    iteration through all schemas.
+*/
+void SchemaValidator::setSchemaNameMatcher(SchemaNameMatcher *matcher)
+{
+    d_ptr->m_matcher = QSharedPointer<SchemaNameMatcher>(matcher);
+}
+
+
+/*!
     Supplements a validator object with data from schema files with \a ext extension
     in \a path folder.
     Schema name (object type) can be defined by the filename of the schema file or
@@ -164,6 +197,7 @@ bool SchemaValidator::loadFromFolder(const QString & path, const QString & schem
 {
     Q_D(SchemaValidator);
     d->mLastError = _loadFromFolder(path, schemaNameProperty, ext);
+    d_ptr->m_bFiltered = false; // clear last filtering result
     return SchemaError::NoError == d->mLastError.errorCode();
 }
 
@@ -176,6 +210,7 @@ bool SchemaValidator::loadFromFile(const QString &filename, SchemaNameInitializa
 {
     Q_D(SchemaValidator);
     d->mLastError = _loadFromFile(filename, type, schemaName);
+    d_ptr->m_bFiltered = false; // clear last filtering result
     return SchemaError::NoError == d->mLastError.errorCode();
 }
 
@@ -188,6 +223,7 @@ bool SchemaValidator::loadFromData(const QByteArray & json, const QString & name
 {
     Q_D(SchemaValidator);
     d->mLastError = _loadFromData(json, name, type);
+    d_ptr->m_bFiltered = false; // clear last filtering result
     return SchemaError::NoError == d->mLastError.errorCode();
  }
 
@@ -336,8 +372,47 @@ bool SchemaValidator::validateSchema(const QString &schemaName, const QJsonObjec
 */
 bool SchemaValidator::validateSchema(const QJsonObject &object)
 {
-    // TODO
-    return SchemaError::NoError;
+    Q_D(SchemaValidator);
+    //qDebug() << "VALIDATE: " << object;
+
+    // do filtering only once
+    if (!d->m_filter.isEmpty() && !d->m_bFiltered)
+    {
+        d->m_bFiltered = true;
+        d->m_strsFilteredSchemas = schemaNames().filter(d->m_filter);
+    }
+
+    const QStringList strsSchemas(d->m_filter.isEmpty() ? schemaNames() : d->m_strsFilteredSchemas);
+
+    if (d->m_matcher)
+    {
+        QString strSchema = d->m_matcher->getSchemaName(object);
+        if (!strSchema.isEmpty()) {
+            return validateSchema(strSchema, object);
+        }
+    }
+
+    // iterate through schemas and find a valid one (may be fast is SchemaNameMatcher is defined)
+    foreach (QString strSchema, strsSchemas) {
+        if (d->m_matcher)
+        {
+            switch (d->m_matcher->match(object, strSchema)) {
+            case 0:
+                return validateSchema(strSchema, object);
+            case -1:
+                continue;
+            }
+
+        }
+
+        if (validateSchema(strSchema, object))
+        {
+            //qDebug() << "found schema: " << strSchema;
+            return true;
+        }
+    }
+
+    return false;
 }
 
 /*!

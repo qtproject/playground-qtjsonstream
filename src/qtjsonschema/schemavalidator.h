@@ -42,6 +42,7 @@
 
 #include <QObject>
 #include <QJsonObject>
+#include <QRegExp>
 
 #include "jsonschema-global.h"
 #include "schemaerror.h"
@@ -77,6 +78,13 @@ public:
     void removeSchema(const QString &);
     void clear();
 
+    // schema validation filtering - limit schemas to be used during validation
+    void setValidationFilter(const QRegExp &);
+
+    // allows faster validation by matching between json object and schema name without doing schema iteration
+    class SchemaNameMatcher;
+    void setSchemaNameMatcher(SchemaNameMatcher *);
+
 protected:
     QJsonObject setSchema(const QString &schemaName, QJsonObject schema);
 
@@ -93,6 +101,42 @@ private:
     class SchemaValidatorPrivate;
     SchemaValidatorPrivate * const d_ptr;
     Q_DECLARE_PRIVATE(SchemaValidator);
+
+public:
+    // helper classes
+    class SchemaNameMatcher
+    {
+    public:
+        virtual ~SchemaNameMatcher() {}
+
+        // knowing exact schema name aloows skip schema iteration and validate with a single schema only
+        virtual QString getSchemaName(const QJsonObject &object) { return QString::null; }
+
+        // limit schemas iteration by matching json object with some schemas
+        // -1 - no match, 0 - exact match, 1 - may match
+        virtual int match(const QJsonObject &object, const QString &schemaName) = 0;
+    };
+
+    // schema name is defined by a property value in json object
+    class SchemaPropertyNameMatcher : public SchemaNameMatcher
+    {
+    public:
+        SchemaPropertyNameMatcher(const QString & property) : m_property(property) {}
+
+        virtual QString getSchemaName(const QJsonObject &object)
+        {
+            return !m_property.isEmpty() && object.contains(m_property) ? object[m_property].toString() : QString::null;
+        }
+
+        // -1 - no match, 0 - exact match, 1 - may match
+        virtual int match(const QJsonObject &object, const QString &schemaName)
+        {
+            return getSchemaName(object) == schemaName ? 0 : -1;
+        }
+
+    private:
+        QString m_property;
+    };
 };
 
 QT_END_NAMESPACE_JSONSTREAM

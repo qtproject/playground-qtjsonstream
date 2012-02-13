@@ -1,0 +1,8 @@
+{
+   "title": "ReplyCommand schema",
+   "description": "Send a command",
+   "type": "object",
+   "properties": {
+     "command": {"type":"string", "required":true },
+   }
+ }

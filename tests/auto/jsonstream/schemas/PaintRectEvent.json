@@ -1,0 +1,11 @@
+{
+   "title": "PaintLineEvent schema",
+   "extends": { "$ref": "PaintEvent" },
+   "description": "Inform the application to paint a rectangle",
+   "type": "object",
+   "properties": {
+     "event": {"type":"string", "pattern":"PaintRectEvent", "required":true },
+     "width": {"type":"number", "minimum": 0, "maximum": 1024, "required":true },
+     "height": {"type":"number", "minimum": 0, "maximum": 768, "required":true }
+   }
+ }
