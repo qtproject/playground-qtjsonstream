@@ -46,6 +46,9 @@
 
 #include <QStringList>
 #include <QDebug>
+#include <QDate>
+#include <QUrl>
+#include <QColor>
 
 #include <math.h>
 
@@ -65,8 +68,8 @@ struct QStaticStringHash
 {
     typedef QStaticStringHash<C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14, C15, C16, C17, C18> Suffix;
 
-    const static int Hash = (C1 ^ Suffix::Hash) + 7;
-    //(C1 ^ ( (C2 ^ (...)) +7 )) +7
+    const static int Hash = (C1 ^ Suffix::Hash) + 8;
+    //(C1 ^ ( (C2 ^ (...)) +8 )) +8
 };
 
 template<>
@@ -87,7 +90,7 @@ struct QStaticStringHash<>
 private:
     inline static int hash(const ushort *str, const int index, const int length)
     {
-        return index != length ? (str[index] ^ hash(str, index + 1, length)) + 7
+        return index != length ? (str[index] ^ hash(str, index + 1, length)) + 8
                      : 0;
     }
 };
@@ -673,6 +676,113 @@ private:
     ValueList m_enum;
 };
 
+// 5.23
+template<class T>
+class SchemaPrivate<T>::CheckFormat : public Check {
+public:
+    CheckFormat(SchemaPrivate *schema, QSharedPointer<CheckSharedData> &data, const Value& value)
+        : Check(schema, data, "Enum format failed for %1")
+    {
+        bool ok;
+        m_format = value.toString(&ok).toLower();
+        Q_ASSERT(ok && !m_format.isEmpty());
+    }
+
+    virtual bool doCheck(const Value &value)
+    {
+        bool ok = true;
+        int hash = QStaticStringHash<>::hash(m_format);
+        switch (hash) {
+        case QStaticStringHash<'d','a','t','e','-','t','i','m','e'>::Hash:
+            if (QString::fromLatin1("date-time") == m_format) {
+                QString str;
+                if (!(str = value.toString(&ok)).isEmpty() && ok) {
+                    return QDateTime::fromString(str, "yyyy-MM-ddThh:mm:ssZ").isValid();
+                }
+            }
+            break;
+        case QStaticStringHash<'d','a','t','e'>::Hash:
+            if (QString::fromLatin1("date") == m_format) {
+                QString str;
+                if (!(str = value.toString(&ok)).isEmpty() && ok) {
+                    return QDate::fromString(str, "yyyy-MM-dd").isValid();
+                }
+            }
+            break;
+        case QStaticStringHash<'t','i','m','e'>::Hash:
+            if (QString::fromLatin1("time") == m_format) {
+                QString str;
+                if (!(str = value.toString(&ok)).isEmpty() && ok) {
+                    return QTime::fromString(str, "hh:mm:ss").isValid();
+                }
+            }
+            break;
+        case QStaticStringHash<'r','e','g','e','x','p'>::Hash:
+            if (QString::fromLatin1("regexp") == m_format) {
+            }
+            break;
+        case QStaticStringHash<'c','o','l','o','r'>::Hash:
+            if (QString::fromLatin1("color") == m_format) {
+                QString str;
+                if (!(str = value.toString(&ok)).isEmpty() && ok) {
+                    return QColor(str).isValid();
+                }
+            }
+            break;
+        case QStaticStringHash<'u','r','i'>::Hash:
+            if (QString::fromLatin1("uri") == m_format) {
+                QString str;
+                if (!(str = value.toString(&ok)).isEmpty() && ok) {
+                    return str.contains(':') || QUrl(str, QUrl::StrictMode).isValid(); // URN or URL
+                }
+            }
+            break;
+        case QStaticStringHash<'u','r','l'>::Hash:
+            if (QString::fromLatin1("url") == m_format) {
+                QString str;
+                if (!(str = value.toString(&ok)).isEmpty() && ok) {
+                    return QUrl(str, QUrl::StrictMode).isValid();
+                }
+            }
+            break;
+        case QStaticStringHash<'p','h','o','n','e'>::Hash:
+            if (QString::fromLatin1("phone") == m_format) {
+                //TODO
+            }
+            break;
+        case QStaticStringHash<'e','m','a','i','l'>::Hash:
+            if (QString::fromLatin1("email") == m_format) {
+                //TODO
+            }
+            break;
+        case QStaticStringHash<'i','p','-','a','d','d','r','e','s','s'>::Hash:
+            if (QString::fromLatin1("ip-address") == m_format) {
+                //TODO
+            }
+            break;
+        case QStaticStringHash<'i','p','v','6'>::Hash:
+            if (QString::fromLatin1("ipv6") == m_format) {
+                //TODO
+            }
+            break;
+        case QStaticStringHash<'h','o','s','t','-','n','a','m','e'>::Hash:
+            if (QString::fromLatin1("host-name") == m_format) {
+                //TODO
+            }
+            break;
+        case QStaticStringHash<'n','o','n','n','e','g','a','t','i','v','e','i','n','t','e','g','e','r'>::Hash: // NonNegativeInteger
+            if (QString::fromLatin1("nonnegativeinteger") == m_format) {
+                return (value.toInt(&ok) >= 0 && ok);
+            }
+            break;
+        }
+        return ok;
+    }
+
+private:
+    QString m_format;
+};
+
 // 5.24
 template<class T>
 class SchemaPrivate<T>::CheckDivisibleBy : public Check {
@@ -867,6 +977,10 @@ typename SchemaPrivate<T>::Check *SchemaPrivate<T>::createCheckPoint(const Key &
     case QStaticStringHash<'e','n','u','m'>::Hash:
         if (QString::fromLatin1("enum") == keyName)
             return new CheckEnum(this, data, value);
+        break;
+    case QStaticStringHash<'f','o','r','m','a','t'>::Hash:
+        if (QString::fromLatin1("format") == keyName)
+            return new CheckFormat(this, data, value);
         break;
     case QStaticStringHash<'d','i','v','i','s','i','b','l','e','b','y'>::Hash:
         if (QString::fromLatin1("divisibleby") == keyName)

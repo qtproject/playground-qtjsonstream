@@ -75,13 +75,14 @@ private slots:
     // 5.17, 5.18
     void testMinMaxLengthValidation();
     // 5.19
-    void testEnum();
+    void testEnumValidation();
     // TODO: 5.20 default
     // 5.21
     void testTitleValidation();
     // 5.22
     void testDescriptionValidation();
-    // TODO: 5.23 format
+    // 5.23 format
+    void testFormatValidation();
     // 5.24
     void testDivisibleByValidation();
     // TODO: 5.25 disallow
@@ -116,10 +117,10 @@ void tst_JsonSchema::schemaTest()
     QJsonObject item;
     item.insert("create-test", 11);
     item.insert("create-test0", 1);
-    item.insert("another-field", QLatin1String("a string"));
+    item.insert("another-field", QLatin1String("uuid:{zxcvbnm}"));
 
     result = validator.validateSchema("SchemaTestObject", item);
-    qDebug() << "VALID validation result: " << result;
+    //qDebug() << "VALID validation result: " << result;
     QVERIFY(result);
 
     // Create an item that does not match the schema
@@ -127,7 +128,7 @@ void tst_JsonSchema::schemaTest()
     noncompliant.insert("create-test", 22);
 
     result = validator.validateSchema("SchemaTestObject", noncompliant);
-    qDebug() << "INVALID validation result: " << result << " message is:" << validator.getLastError().errorString();
+    //qDebug() << "INVALID validation result: " << result << " message is:" << validator.getLastError().errorString();
     QVERIFY(!result && validator.getLastError().errorCode() == SchemaError::FailedSchemaValidation);
 
     // test SchemaValidator::removesSchema()
@@ -320,7 +321,7 @@ void tst_JsonSchema::testMinMaxLengthValidation()
 }
 
 // 5.19
-void tst_JsonSchema::testEnum()
+void tst_JsonSchema::testEnumValidation()
 {
     QVERIFY(validate(QJsonValue(true), "{ \"enum\" : [false, true] }"));
     QVERIFY(validate(QJsonValue(2), "{ \"enum\" : [1, 2, 3] }"));
@@ -341,6 +342,33 @@ void tst_JsonSchema::testTitleValidation()
 // 5.22
 void tst_JsonSchema::testDescriptionValidation()
 {
+}
+
+// 5.23 format
+void tst_JsonSchema::testFormatValidation()
+{
+    // format=date-time
+    QVERIFY(validate(QJsonValue(QString("2112-12-12T12:34:56Z")), "{ \"format\" : \"date-time\" }"));
+    QVERIFY(!validate(QJsonValue(QString("21121212T123456Z")), "{ \"format\" : \"date-time\" }"));
+    // format=date
+    QVERIFY(validate(QJsonValue(QString("2112-12-12")), "{ \"format\" : \"date\" }"));
+    QVERIFY(!validate(QJsonValue(QString("21121212")), "{ \"format\" : \"date\" }"));
+    // format=time
+    QVERIFY(validate(QJsonValue(QString("12:34:56")), "{ \"format\" : \"time\" }"));
+    QVERIFY(!validate(QJsonValue(QString("123456")), "{ \"format\" : \"time\" }"));
+    // format=color
+    QVERIFY(validate(QJsonValue(QString("#FF0F0F")), "{ \"format\" : \"color\" }"));
+    QVERIFY(validate(QJsonValue(QString("red")), "{ \"format\" : \"color\" }"));
+    QVERIFY(!validate(QJsonValue(QString("ZZFF0F0F")), "{ \"format\" : \"color\" }"));
+    // format=url
+    QVERIFY(validate(QJsonValue(QString("http://www.zzz.zu/zzz")), "{ \"format\" : \"url\" }"));
+    // format=uri
+    QVERIFY(validate(QJsonValue(QString("uuid:{zxcvbnm}")), "{ \"format\" : \"uri\" }"));
+    QVERIFY(validate(QJsonValue(QString("urn:issn:1536-3613")), "{ \"format\" : \"uri\" }"));
+    // format=NonNegativeInteger
+    QVERIFY(validate(QJsonValue(56), "{ \"format\" : \"NonNegativeInteger\" }"));
+    QVERIFY(!validate(QJsonValue(56.5), "{ \"format\" : \"NonNegativeInteger\" }"));
+    QVERIFY(!validate(QJsonValue(-56), "{ \"format\" : \"NonNegativeInteger\" }"));
 }
 
 // 5.24
@@ -382,7 +410,7 @@ bool tst_JsonSchema::validate(const char *data, const QByteArray & schemaBody)
     QJsonDocument doc = QJsonDocument::fromJson(data);
     if (doc.isNull())
     {
-        qDebug() << "JSON object data is invalid";
+        //qDebug() << "JSON object data is invalid";
         return false;
     }
 
@@ -396,7 +424,7 @@ bool tst_JsonSchema::validate(const QJsonValue & value, const QByteArray & schem
 
     QJsonObject object;
     object.insert("test", value);
-    qDebug() << "object " << object;
+    //qDebug() << "object " << object;
 
     SchemaValidator validator;
 
@@ -404,16 +432,16 @@ bool tst_JsonSchema::validate(const QJsonValue & value, const QByteArray & schem
     QByteArray schema = QString("{ \"properties\": { \"test\": %1 } }").arg(schemaBody.constData()).toUtf8();
 
     result = validator.loadFromData(schema, "testSchema");
-    qDebug() << "####### load result : " << result;
+    //qDebug() << "####### load result : " << result;
 
     if (result)
     {
         result = validator.validateSchema("testSchema", object);
-        qDebug() << "####### validation result: " << result << " message is:" << validator.getLastError().errorString();
+        //qDebug() << "####### validation result: " << result << " message is:" << validator.getLastError().errorString();
     }
     else
     {
-        qDebug() << "############################ LOAD ERROR: " << schemaBody;
+        //qDebug() << "############################ LOAD ERROR: " << schemaBody;
     }
     return result;
 }

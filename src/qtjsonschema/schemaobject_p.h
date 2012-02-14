@@ -218,6 +218,8 @@ class SchemaPrivate : public QSharedData
     class CheckEnum;
     // 5.21
     class CheckTitle;
+    // 5.23
+    class CheckFormat;
     // 5.24
     class CheckDivisibleBy;
     // 5.26
