@@ -492,9 +492,9 @@ void JsonServer::initSchemaValidation()
     {
         ValidatorFlags flags(NoValidation);
         foreach (QString str, strSchemaControl.toLower().split(QRegExp("[,:]"), QString::SkipEmptyParts)) {
-            if (str == "warn")
+            if (str == QLatin1String("warn"))
                 flags |= WarnIfInvalid;
-            else if (str == "drop")
+            else if (str == QLatin1String("drop"))
                 flags |= DropIfInvalid;
         }
         setValidatorFlags(flags);

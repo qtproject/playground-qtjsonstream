@@ -110,7 +110,7 @@ public:
         virtual ~SchemaNameMatcher() {}
 
         // knowing exact schema name aloows skip schema iteration and validate with a single schema only
-        virtual QString getSchemaName(const QJsonObject &object) { return QString::null; }
+        virtual QString getSchemaName(const QJsonObject &) { return QString::null; }
 
         // limit schemas iteration by matching json object with some schemas
         // -1 - no match, 0 - exact match, 1 - may match

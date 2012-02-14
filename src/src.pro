@@ -51,6 +51,7 @@ PUBLIC_HEADERS += \
     $$PWD/jsonauthority.h \
     $$PWD/jsontokenauthority.h \
     $$PWD/jsonuidauthority.h \
+    $$PWD/jsonuidrangeauthority.h \
     $$PWD/jsonserver.h \
     $$PWD/jsonstream-global.h \
     $$PWD/jsonserverclient.h \
@@ -72,6 +73,7 @@ SOURCES += \
     $$PWD/jsonauthority.cpp \
     $$PWD/jsontokenauthority.cpp \
     $$PWD/jsonuidauthority.cpp \
+    $$PWD/jsonuidrangeauthority.cpp \
     $$PWD/jsonserverclient.cpp \
     $$PWD/jsonserver.cpp \
     $$SCHEMA_SOURCES

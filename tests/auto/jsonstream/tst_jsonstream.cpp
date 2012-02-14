@@ -45,6 +45,7 @@
 #include "jsonserver.h"
 #include "jsonstream.h"
 #include "jsonuidauthority.h"
+#include "jsonuidrangeauthority.h"
 #include "schemavalidator.h"
 
 QT_USE_NAMESPACE_JSONSTREAM
@@ -244,6 +245,8 @@ private slots:
     void noAuthTest();
     void authTest();
     void authFail();
+    void authRangeTest();
+    void authRangeFail();
     void formatTest();
     void schemaTest();
 };
@@ -306,6 +309,47 @@ void tst_JsonStream::authFail()
     QVERIFY(server.listen(socketname, authority));
 
     // authority->authorize(geteuid());
+    Child child("testClient/testClient", QStringList() << "-socket" << socketname);
+
+    spy.waitFailed();
+    child.waitForFinished();
+    delete authority;
+}
+
+
+void tst_JsonStream::authRangeTest()
+{
+    QString socketname = "/tmp/tst_socket";
+    JsonServer server;
+    Spy spy(&server);
+    JsonUIDRangeAuthority *authority = new JsonUIDRangeAuthority;
+    authority->setMinimum(geteuid());
+    authority->setMaximum(geteuid());
+
+    QVERIFY(server.listen(socketname, authority));
+
+    Child child("testClient/testClient", QStringList() << "-socket" << socketname);
+
+    spy.waitReceived();
+    qDebug() << "Got note=" << spy.lastMessage() << "from" << spy.lastSender();
+    QJsonObject msg;
+    msg.insert("command", QLatin1String("exit"));
+    QVERIFY(server.hasConnection(spy.lastSender()));
+    QVERIFY(server.send(spy.lastSender(), msg));
+
+    spy.waitRemoved();
+    child.waitForFinished();
+    delete authority;
+}
+
+void tst_JsonStream::authRangeFail()
+{
+    QString socketname = "/tmp/tst_socket";
+    JsonServer server;
+    Spy spy(&server);
+    JsonUIDRangeAuthority *authority = new JsonUIDRangeAuthority;
+    QVERIFY(server.listen(socketname, authority));
+
     Child child("testClient/testClient", QStringList() << "-socket" << socketname);
 
     spy.waitFailed();
