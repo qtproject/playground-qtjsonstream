@@ -173,6 +173,7 @@ void JsonServer::handleLocalConnection()
         return;
 
     if (QLocalSocket *socket = server->nextPendingConnection()) {
+        socket->setReadBufferSize(64*1024);
         JsonAuthority *authority = m_localServers.value(server);
         JsonServerClient *client = new JsonServerClient(this);
         client->setAuthority(authority);

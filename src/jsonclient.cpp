@@ -134,6 +134,7 @@ bool JsonClient::connectLocal(const QString& socketname)
     }
 
     QLocalSocket *socket = new QLocalSocket(this);
+    socket->setReadBufferSize(64*1024);
     socket->connectToServer(socketname);
 
     if (socket->waitForConnected()) {

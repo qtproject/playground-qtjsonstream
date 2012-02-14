@@ -1,3 +1,4 @@
+CONFIG += testcase
 CONFIG -= app_bundle
 QT += testlib jsonstream
 
