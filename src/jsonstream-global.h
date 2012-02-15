@@ -61,6 +61,12 @@
 #  define QT_PREPEND_NAMESPACE_JSONSTREAM(name) ::QtAddOn::JsonStream::name
 #endif
 
+// The compiler will not correctly expand this:
+//      Q_DECLARE_METATYPE(QT_PREPEND_NAMESPACE_PROCESSMANAGER(ProcessFrontend) *)
+// so we add an extra level of indirection so the correct expanded typename is processed
+// by Q_DECLARE_METATYPE.
+#define QT_JSONSTREAM_DECLARE_METATYPE(TYPE)  Q_DECLARE_METATYPE(TYPE)
+
 QT_BEGIN_NAMESPACE_JSONSTREAM
 
 enum EncodingFormat { FormatUndefined, FormatUTF8, FormatBSON, FormatQBJS };
