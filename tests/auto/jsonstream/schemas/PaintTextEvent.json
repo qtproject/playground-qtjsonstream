@@ -1,5 +1,5 @@
 {
-   "title": "PaintLineEvent schema",
+   "title": "PaintTextEvent schema",
    "extends": { "$ref": "PaintEvent" },
    "description": "Inform the application to paint a text",
    "type": "object",
@@ -7,6 +7,15 @@
      "event": {"type":"string", "pattern":"PaintTextEvent", "required":true },
      "text": {"type":"string", "required":true },
      "font-size": {"type":"number", "minimum": 0 },
-     "bold": {"type":"boolean"}
+     "bold": {"type":"boolean"},
+     "font-name": {"type":"string", "default": "times"},
+     "settings": {
+         "type": "object",
+         "properties": {
+             "border-color": { "type": "string", "default": "red" },
+             "border-width": { "type": "number", "default": 5 },
+             "border": {"type":"boolean", "default": true}
+         }
+     }
    }
  }

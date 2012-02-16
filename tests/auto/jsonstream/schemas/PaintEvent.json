@@ -5,6 +5,7 @@
    "properties": {
      "event": {"type":"string", "pattern":"Paint\\w*Event", "required":true },
      "x": {"type":"number", "minimum": 0, "maximum": 1024, "required":true },
-     "y": {"type":"number", "minimum": 0, "maximum": 768, "required":true }
+     "y": {"type":"number", "minimum": 0, "maximum": 768, "required":true },
+     "owner" : {"type":"string", "default": "painter" }
    }
  }

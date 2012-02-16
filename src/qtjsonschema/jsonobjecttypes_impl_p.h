@@ -290,6 +290,21 @@ inline bool JsonObjectTypes::Value::compare(const Value & val) const
     return v0 == v1;
 }
 
+inline QJsonValue JsonObjectTypes::Value::value() const
+{
+    switch (m_type) {
+    case Map:
+        return map().value(m_property);
+    case List:
+        return list().at(m_index);
+    case RootMap:
+        return m_value;
+    default:
+        Q_ASSERT(false);
+    }
+    return QJsonValue();
+}
+
 inline const QJsonObject JsonObjectTypes::Value::map() const
 {
     Q_ASSERT(m_type == Map);

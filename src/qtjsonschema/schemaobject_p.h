@@ -109,6 +109,10 @@ class Schema {
 
 public:
     inline bool check(const Value &value, Service *callbackToUseForCheck) const;
+    void checkDefault(Value &value, Object &object) const
+    {
+        d_ptr->checkDefault(value, object);
+    }
 
     Schema()
         : d_ptr(new SchemaPrivate<T>())
@@ -151,6 +155,7 @@ class SchemaPrivate : public QSharedData
         };
         Q_DECLARE_FLAGS(Flags, Flag)
         Flags m_flags;
+        QSharedPointer<Value> m_default; // keeps a default value
     };
 
     class Check {
@@ -176,6 +181,10 @@ class SchemaPrivate : public QSharedData
             }
             return result;
         }
+
+        Value* getDefault() const { return m_data && m_data->m_default ? m_data->m_default.data() : 0; }
+
+        virtual void checkDefault(Value& value, Object &object) const {} // do nothing in generic case
 
     protected:
         SchemaPrivate *m_schema;
@@ -217,6 +226,8 @@ class SchemaPrivate : public QSharedData
     class CheckMaxLength;
     // 5.19
     class CheckEnum;
+    // 5.20
+    class CheckDefault;
     // 5.21
     class CheckTitle;
     // 5.23
@@ -266,6 +277,8 @@ public:
         // we have some checks so it means that something got compiled.
         return m_checks.size();
     }
+
+    void checkDefault(Value &value, Object &object) const;
 
 private:
     QVarLengthArray<Check *, 4> m_checks;

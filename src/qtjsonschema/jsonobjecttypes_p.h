@@ -128,6 +128,7 @@ public:
         inline Object toObject(bool *ok) const;
 
         inline bool compare(const Value &) const;
+        inline QJsonValue value() const;
 
     private:
         inline const QJsonObject map() const;

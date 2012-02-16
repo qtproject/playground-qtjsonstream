@@ -324,6 +324,65 @@ public:
         }
         return true;
     }
+
+
+    void checkDefault(Value& value, Object &_object) const
+    {
+        bool ok;
+        Object object = value.toObject(&ok);
+        if (!ok)
+            return;
+
+        //qDebug() << Q_FUNC_INFO;
+
+        // create missing properties list
+        QList<Key> strs;
+        QHashIterator<const Key, QVarLengthArray<Check *, 4> > it(m_checks);
+        while (it.hasNext()) {
+             it.next();
+             strs << it.key();
+         }
+
+        foreach (const Key &key, object.propertyNames()) {
+            QVarLengthArray<Check *, 4> empty;
+            QVarLengthArray<Check *, 4> checks = m_checks.value(key, empty);
+            Value property = object.property(key);
+
+            // remove from missing properties list
+            strs.removeOne(key);
+
+            if (_object[key].isObject()) {
+                foreach (Check *check, checks) {
+                    Object oo(_object[key].toObject());
+                    check->checkDefault(property, oo);
+                    _object[key] = oo;
+                }
+            }
+        }
+
+        // add defaults for missing properties
+        foreach (const Key &key, strs) {
+            QVarLengthArray<Check *, 4> empty;
+            QVarLengthArray<Check *, 4> checks = m_checks.value(key, empty);
+            Value property = object.property(key);
+
+            if (checks.first()->getDefault()) { // basic type
+                _object.insert(key, checks.first()->getDefault()->value());
+            }
+            else { // looks like object or array
+                Object object;
+                foreach (Check *check, checks) {
+                    Value value("", Object());
+                    check->checkDefault(value, object);
+                }
+
+                if (!object.isEmpty()) {
+                    _object.insert(key, object);
+                }
+            }
+        }
+    }
+
 private:
     QHash<const Key, QVarLengthArray<Check *, 4> > m_checks;
 };
@@ -676,6 +735,24 @@ private:
     ValueList m_enum;
 };
 
+// 5.20
+template<class T>
+class SchemaPrivate<T>::CheckDefault : public Check {
+public:
+    CheckDefault(SchemaPrivate *schema, QSharedPointer<CheckSharedData> &data, const Value& value)
+        : Check(schema, data, "Default check failed for %1")
+    {
+        // used shared data to store
+        Check::m_data->m_default = QSharedPointer<Value>(new Value(value));
+    }
+
+    virtual bool doCheck(const Value &value)
+    {
+        return true;
+    }
+private:
+};
+
 // 5.23
 template<class T>
 class SchemaPrivate<T>::CheckFormat : public Check {
@@ -849,6 +926,14 @@ public:
         }
         return true;
     }
+
+    void checkDefault(Value& value, Object &_object) const
+    {
+        for (int i = 0; i < m_extendedSchema.count(); ++i) {
+            m_extendedSchema[i].checkDefault(value, _object);
+        }
+    }
+
 private:
     QVarLengthArray<Schema<T>, 4> m_extendedSchema;
 };
@@ -883,6 +968,13 @@ public:
 //        qDebug() << Q_FUNC_INFO << result;
         return result;
     }
+
+    void checkDefault(Value& value, Object &_object) const
+    {
+        m_newSchema.checkDefault(value, _object);
+
+    }
+
 private:
     Schema<T> m_newSchema;
 };
@@ -982,6 +1074,10 @@ typename SchemaPrivate<T>::Check *SchemaPrivate<T>::createCheckPoint(const Key &
         if (QString::fromLatin1("format") == keyName)
             return new CheckFormat(this, data, value);
         break;
+    case QStaticStringHash<'d','e','f','a','u','l','t'>::Hash:
+        if (QString::fromLatin1("default") == keyName)
+            return new CheckDefault(this, data, value);
+        break;
     case QStaticStringHash<'d','i','v','i','s','i','b','l','e','b','y'>::Hash:
         if (QString::fromLatin1("divisibleby") == keyName)
             return new CheckDivisibleBy(this, data, value);
@@ -1040,6 +1136,14 @@ bool SchemaPrivate<T>::check(const Value &value) const
         return false;
     }
     return true;
+}
+
+template<class T>
+void SchemaPrivate<T>::checkDefault(Value &value, Object &object) const
+{
+    foreach (Check *check, m_checks) {
+        check->checkDefault(value, object);
+    }
 }
 
 } // namespace SchemaValidation

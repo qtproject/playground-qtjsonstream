@@ -77,6 +77,7 @@ private slots:
     // 5.19
     void testEnumValidation();
     // TODO: 5.20 default
+    void testDefaultValidation();
     // 5.21
     void testTitleValidation();
     // 5.22
@@ -333,6 +334,15 @@ void tst_JsonSchema::testEnumValidation()
     QVERIFY(!validate(QJsonValue(QString()), "{ \"enum\" : [] }"));
 //FIX    QVERIFY(!validate({}, "{ \"properties\" : { \"a\" : { \"enum\" : [\"a\"], \"optional\" : false, \"required\" : true } } }"));
 }
+
+
+// 5.20
+void tst_JsonSchema::testDefaultValidation()
+{
+//    QVERIFY(validate("{ \"b\" : true }", "{ \"type\":\"object\", \"properties\" : { \"a\" : { \"type\":\"string\", \"default\": \"hoi\"} } }"));
+    QVERIFY(validate("{ \"b\" : true }", "{ \"type\":\"object\", \"properties\" : { \"a\" : { \"type\":\"string\", \"default\": \"hoi\"}, \"c\" : { \"type\":\"array\", \"default\":[\"a\",\"b\",\"c\"]} } }"));
+}
+
 
 // 5.21
 void tst_JsonSchema::testTitleValidation()
