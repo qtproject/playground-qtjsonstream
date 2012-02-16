@@ -105,6 +105,10 @@ inline bool canValidate(JsonServer::ValidatorFlags flags, SchemaValidator *valid
     be enabled separately; there is no general "queue for everyone" setting.
 */
 
+/*!
+  \property JsonServer::validatorFlags
+  The current ValidatorFlags set on this server
+*/
 
 /*!
   Constructs a new JsonServer instance with \a parent.
@@ -438,15 +442,24 @@ void JsonServer::removeConnection(const QString &identifier)
 }
 
 /*!
-     \enum JsonServer::ValidatorFlags
-     \value NoValidation
-         No JSON schema validation of inbound or outbound messages
+     \enum JsonServer::ValidatorFlag
+     This enum determines what the validators do with packets.  The value is
+     specified by combining values from the following list using the bitwise
+     OR operator:
+
      \value DropIfInvalid
          Validate and drop invalid messages.
      \value WarnIfInvalid
          Validate and warn about invalid messages.
      \value ApplyDefaultValues
          If a value is missing then use a default attribute's value fron JSON schema.
+
+     \omitvalue NoValidation
+*/
+
+/*!
+  \fn ValidatorFlags JsonServer::validatorFlags() const
+  Return the current ValidatorFlags
 */
 
 /*!

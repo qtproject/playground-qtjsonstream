@@ -57,6 +57,10 @@ const QString SchemaError::kMessageStr = QString::fromLatin1("message");
      \omitvalue NoError
      \value FailedSchemaValidation
          Object to be created/updated was invalid according to the schema.
+     \value InvalidSchemaOperation
+         Error somewhere in the schema itself?
+     \value InvalidObject
+         Unable to parse an incoming object
  */
 
 /*!

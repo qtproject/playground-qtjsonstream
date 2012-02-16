@@ -72,6 +72,16 @@ QT_BEGIN_NAMESPACE_JSONSTREAM
  */
 
 /*!
+  \property JsonUIDRangeAuthority::minimum
+  The minimum valid UID.  This must be set to at least 0, or all connections will be refused.
+*/
+
+/*!
+  \property JsonUIDRangeAuthority::maximum
+  The maximum valid UID.  This must be set to at least 0, or all connections will be refused.
+*/
+
+/*!
   Construct a JsonUIDRangeAuthority with optional \a parent.
  */
 

@@ -61,6 +61,7 @@ class SchemaValidator;
 class Q_ADDON_JSONSTREAM_EXPORT JsonServer : public QObject
 {
     Q_OBJECT
+    Q_PROPERTY(ValidatorFlags validatorFlags READ validatorFlags WRITE setValidatorFlags)
 
 public:
     JsonServer(QObject *parent = 0);
@@ -87,8 +88,6 @@ public:
         ApplyDefaultValues = 0x4 // TODO
     };
     Q_DECLARE_FLAGS(ValidatorFlags, ValidatorFlag)
-
-    Q_PROPERTY(ValidatorFlags validatorFlags READ validatorFlags WRITE setValidatorFlags)
 
     ValidatorFlags validatorFlags() const { return m_validatorFlags; }
     void setValidatorFlags(ValidatorFlags);
@@ -132,6 +131,8 @@ private:
     SchemaValidator                       *m_inboundValidator;
     SchemaValidator                       *m_outboundValidator;
 };
+
+Q_DECLARE_OPERATORS_FOR_FLAGS(JsonServer::ValidatorFlags)
 
 QT_END_NAMESPACE_JSONSTREAM
 

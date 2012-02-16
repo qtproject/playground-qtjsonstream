@@ -202,7 +202,7 @@ bool SchemaValidator::loadFromFolder(const QString & path, const QString & schem
 }
 
 /*!
-    Supplements a validator object with data from \a filename schema file, using \a type and \a shemaName.
+    Supplements a validator object with data from \a filename schema file, using \a type and \a schemaName.
     Returns true at success, otherwise getLastError() can be used to access
     a detailed error information.
 */
