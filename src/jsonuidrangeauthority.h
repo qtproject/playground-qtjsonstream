@@ -53,17 +53,17 @@ QT_BEGIN_NAMESPACE_JSONSTREAM
 class Q_ADDON_JSONSTREAM_EXPORT JsonUIDRangeAuthority : public JsonAuthority
 {
     Q_OBJECT
-    Q_PROPERTY(uid_t minimum READ minimum WRITE setMinimum NOTIFY minimumChanged)
-    Q_PROPERTY(uid_t maximum READ maximum WRITE setMaximum NOTIFY maximumChanged)
+    Q_PROPERTY(int minimum READ minimum WRITE setMinimum NOTIFY minimumChanged)
+    Q_PROPERTY(int maximum READ maximum WRITE setMaximum NOTIFY maximumChanged)
 
 public:
     JsonUIDRangeAuthority(QObject *parent = 0);
 
-    uid_t  minimum() const;
-    void setMinimum(uid_t);
+    int  minimum() const;
+    void setMinimum(int);
 
-    uid_t  maximum() const;
-    void setMaximum(uid_t);
+    int  maximum() const;
+    void setMaximum(int);
 
     virtual AuthorizationRecord clientConnected(JsonStream *stream);
     virtual AuthorizationRecord messageReceived(JsonStream *stream, const QJsonObject &message);
@@ -73,8 +73,8 @@ signals:
     void maximumChanged();
 
 private:
-    uid_t m_minimum;
-    uid_t m_maximum;
+    int m_minimum;
+    int m_maximum;
 };
 
 QT_END_NAMESPACE_JSONSTREAM

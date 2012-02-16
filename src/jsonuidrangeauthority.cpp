@@ -59,13 +59,16 @@ QT_BEGIN_NAMESPACE_JSONSTREAM
 
   The JsonUIDRangeAuthority class authorizes Json client connections based on the user ID of the
   client.  This user ID is read directly from the connected socket.  The authorized range
-  is set with a minimum and maximum value.  Initially these values are set to minimum=1 and
-  maximum=0. The range is inclusive; that is, to be authorized the client
-  must satisfy "minimum <= uid <= maximum".
+  is set with a minimum and maximum value.  The range is inclusive; that is, to be authorized the client
+  must satisfy "minimum <= uid <= maximum".  Initially the range is not set; you must set both
+  minimum and maximum, or all clients will be refused.
 
   The name returned by the JsonUIDRangeAuthority class is the name entry in the /etc/passwd
   database.  If a name entry does not exist, the JsonUIDRangeAuthority class sets the name equal
   to the string form of the uid.
+
+  Please note that actual Posix uid_t values are unsigned integers.  In theory this means that
+  we will get into trouble if someone has a UID value greater than about 2000000000.
  */
 
 /*!
@@ -74,8 +77,8 @@ QT_BEGIN_NAMESPACE_JSONSTREAM
 
 JsonUIDRangeAuthority::JsonUIDRangeAuthority(QObject *parent)
     : JsonAuthority(parent)
-    , m_minimum(1)
-    , m_maximum(0)
+    , m_minimum(-1)
+    , m_maximum(-1)
 {
 }
 
@@ -83,7 +86,7 @@ JsonUIDRangeAuthority::JsonUIDRangeAuthority(QObject *parent)
   Return the minimum value
  */
 
-uid_t JsonUIDRangeAuthority::minimum() const
+int JsonUIDRangeAuthority::minimum() const
 {
     return m_minimum;
 }
@@ -92,7 +95,7 @@ uid_t JsonUIDRangeAuthority::minimum() const
   Set the minimum value to \a minimum.
  */
 
-void JsonUIDRangeAuthority::setMinimum(uid_t minimum)
+void JsonUIDRangeAuthority::setMinimum(int minimum)
 {
     if (m_minimum != minimum) {
         m_minimum = minimum;
@@ -104,7 +107,7 @@ void JsonUIDRangeAuthority::setMinimum(uid_t minimum)
   Return the maximum value
  */
 
-uid_t JsonUIDRangeAuthority::maximum() const
+int JsonUIDRangeAuthority::maximum() const
 {
     return m_maximum;
 }
@@ -113,7 +116,7 @@ uid_t JsonUIDRangeAuthority::maximum() const
   Set the maximum value to \a maximum.
  */
 
-void JsonUIDRangeAuthority::setMaximum(uid_t maximum)
+void JsonUIDRangeAuthority::setMaximum(int maximum)
 {
     if (m_maximum != maximum) {
         m_maximum = maximum;
@@ -163,7 +166,7 @@ AuthorizationRecord JsonUIDRangeAuthority::clientConnected(JsonStream *stream)
     euid = cr.uid;
 #endif
 
-    if (euid >= m_minimum && euid <= m_maximum) {
+    if (m_minimum >= 0 && m_maximum >= 0 && euid >= (uid_t) m_minimum && euid <= (uid_t) m_maximum) {
         struct passwd *passwd = getpwuid(euid);
         if (passwd)
             authRecord.identifier = QString::fromLatin1(passwd->pw_name);
