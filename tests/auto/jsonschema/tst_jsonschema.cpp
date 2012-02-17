@@ -210,8 +210,9 @@ void tst_JsonSchema::testItemsValidation()
     array.removeAt(0); // [2]
     QVERIFY(!validate(array, "{ \"type\" : \"array\", \"items\" : { \"type\" : \"string\" } }")); // INVALID
 
-    array[0] = QLatin1String("foo");
-    array[1] = QLatin1String("two"); //["foo", "two"]
+    array = QJsonArray();
+    array.append(QLatin1String("foo"));
+    array.append(QLatin1String("two")); //["foo", "two"]
     // should fail!!!!!
 //fix    QVERIFY(!validate(array, "{ \"type\" : \"array\", \"items\" : [{ \"type\" : \"string\" }, { \"type\" : \"number\" }] }"));
 }

@@ -41,10 +41,15 @@
 
 #include "schemaerror.h"
 
+#include <QStringList>
+
 QT_BEGIN_NAMESPACE_JSONSTREAM
 
-const QString SchemaError::kCodeStr    = QString::fromLatin1("code");
-const QString SchemaError::kMessageStr = QString::fromLatin1("message");
+const QString SchemaError::kCodeStr    = QString::fromLatin1("::code");
+const QString SchemaError::kMessageStr = QString::fromLatin1("::message");
+const QString SchemaError::kSourceStr = QString::fromLatin1("::source");
+const QString SchemaError::kCounterStr = QString::fromLatin1("::count");
+const QString SchemaError::kErrorPrefixStr = QString::fromLatin1("::");
 
 /*!
     \class SchemaError
@@ -61,6 +66,12 @@ const QString SchemaError::kMessageStr = QString::fromLatin1("message");
          Error somewhere in the schema itself?
      \value InvalidObject
          Unable to parse an incoming object
+     \value FailedSchemaFileOpenRead
+         Schema file could not be opened or read from
+     \value InvalidSchemaFolder
+         Schema folder does not exist
+     \value InvalidSchemaLoading
+         Schema loading errors
  */
 
 /*!
@@ -68,8 +79,8 @@ const QString SchemaError::kMessageStr = QString::fromLatin1("message");
 */
 SchemaError::SchemaError(ErrorCode code, const QString & message)
 {
-    m_data.insert("code", code);
-    m_data.insert("message", message);
+    m_data.insert(kCodeStr, code);
+    m_data.insert(kMessageStr, message);
 }
 
 /*!
@@ -77,7 +88,7 @@ SchemaError::SchemaError(ErrorCode code, const QString & message)
 */
 SchemaError::ErrorCode SchemaError::errorCode() const
 {
-    return m_data.isEmpty() ? SchemaError::NoError : (SchemaError::ErrorCode)(m_data.value("code").toDouble());
+    return m_data.isEmpty() ? SchemaError::NoError : (SchemaError::ErrorCode)(m_data.value(kCodeStr).toDouble());
 }
 
 /*!
@@ -85,7 +96,32 @@ SchemaError::ErrorCode SchemaError::errorCode() const
 */
 QString SchemaError::errorString() const
 {
-    return m_data.isEmpty() ? QString() : m_data.value("message").toString();
+    return m_data.isEmpty() ? QString() : m_data.value(kMessageStr).toString();
+}
+
+/*!
+  Returns a source of the last schema error.
+*/
+QString SchemaError::errorSource() const
+{
+    return m_data.isEmpty() ? QString() : m_data.value(kSourceStr).toString();
+}
+
+/*!
+  Returns a list of sub errors.
+*/
+QList<SchemaError> SchemaError::subErrors() const
+{
+    QList<SchemaError> errors;
+    foreach (QString key, m_data.keys()) {
+        if (!key.startsWith(kErrorPrefixStr)) {
+            QJsonObject object(m_data[key].toObject());
+            if (object.contains(kCodeStr))
+                errors.append(SchemaError(object));
+        }
+    }
+
+    return errors;
 }
 
 QT_END_NAMESPACE_JSONSTREAM

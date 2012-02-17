@@ -45,6 +45,7 @@
 #include "jsonschema-global.h"
 
 #include <QJsonObject>
+#include <QList>
 
 QT_BEGIN_NAMESPACE_JSONSTREAM
 
@@ -55,7 +56,10 @@ public:
         NoError = 0,
         FailedSchemaValidation, // Invalid according to the schema
         InvalidSchemaOperation,
-        InvalidObject // Unable to parse an incoming object
+        InvalidObject,              // Unable to parse an incoming object
+        FailedSchemaFileOpenRead,   // Schema file could not be opened or read from
+        InvalidSchemaFolder,        // Schema folder does not exist
+        InvalidSchemaLoading        // Schema loading errors
     };
 
     SchemaError() {}
@@ -64,11 +68,17 @@ public:
 
     ErrorCode errorCode() const;
     QString errorString() const;
+    QString errorSource() const;
+
+    QList<SchemaError> subErrors() const;
 
     QJsonObject object() const { return m_data; }
 
     static const QString kCodeStr;
     static const QString kMessageStr;
+    static const QString kSourceStr;
+    static const QString kCounterStr;
+    static const QString kErrorPrefixStr;
 
 private:
     QJsonObject m_data;
