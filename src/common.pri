@@ -1,5 +1,3 @@
-QT += declarative
-
 COMMON_PRIVATE_HEADERS = \
     $$PWD/bson/bson.h \
     $$PWD/bson/platform_hacks.h \

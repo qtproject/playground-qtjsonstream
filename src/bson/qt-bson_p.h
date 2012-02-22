@@ -10,7 +10,6 @@
 #include <QByteArray>
 #include <QDebug>
 #include <QObject>
-#include <QJSValue>
 #include <QSharedData>
 #include <QSharedPointer>
 #include <QStringList>
@@ -48,7 +47,6 @@ public:
     BsonObject(const BsonObject &);
     BsonObject(const QVariantMap &);
     BsonObject(const QVariantList &);
-    BsonObject(QJSValue);
 private:
     BsonObject(bson_iterator *it, const BsonObject *parent, bson_type bt);
 public:

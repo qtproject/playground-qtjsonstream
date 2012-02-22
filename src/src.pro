@@ -9,7 +9,7 @@ DESTDIR = $$QT.jsonstream.libs
 VERSION = $$QT.jsonstream.VERSION
 DEFINES += QT_ADDON_JSONSTREAM_LIB
 
-QT += core network declarative
+QT += core network
 
 CONFIG += module create_prl
 MODULE_PRI = ../modules/qt_jsonstream.pri
@@ -68,7 +68,6 @@ SOURCES += \
     $$PWD/jsonbuffer.cpp \
     $$PWD/bson/bson.cpp \
     $$PWD/bson/qt-bson.cpp \
-    $$PWD/bson/bson-scriptvalue.cpp \
     $$PWD/jsonclient.cpp \
     $$PWD/jsonauthority.cpp \
     $$PWD/jsontokenauthority.cpp \
