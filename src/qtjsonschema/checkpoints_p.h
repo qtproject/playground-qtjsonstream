@@ -63,10 +63,10 @@ namespace SchemaValidation {
 template<ushort C1 = 0, ushort C2 = 0, ushort C3 = 0, ushort C4 = 0, ushort C5 = 0,
          ushort C6 = 0, ushort C7 = 0, ushort C8 = 0, ushort C9 = 0, ushort C10 = 0,
          ushort C11 = 0, ushort C12 = 0, ushort C13 = 0, ushort C14 = 0, ushort C15 = 0,
-         ushort C16 = 0, ushort C17 = 0, ushort C18 = 0>
+         ushort C16 = 0, ushort C17 = 0, ushort C18 = 0, ushort C19 = 0, ushort C20 = 0>
 struct QStaticStringHash
 {
-    typedef QStaticStringHash<C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14, C15, C16, C17, C18> Suffix;
+    typedef QStaticStringHash<C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14, C15, C16, C17, C18, C19, C20> Suffix;
 
     const static int Hash = (C1 ^ Suffix::Hash) + 8;
     //(C1 ^ ( (C2 ^ (...)) +8 )) +8
@@ -294,7 +294,7 @@ public:
 
     ~CheckProperties()
     {
-        typename QHash<const Key, QVarLengthArray<Check *, 4> >::const_iterator i;
+        typename QHash<Key, QVarLengthArray<Check *, 4> >::const_iterator i;
         for (i = m_checks.constBegin(); i != m_checks.constEnd(); ++i) {
             typename QVarLengthArray<Check *, 4>::const_iterator j;
             for (j = i.value().constBegin(); j != i.value().constEnd(); ++j){
@@ -310,6 +310,24 @@ public:
         if (!ok)
             return false;
 
+        if (Check::m_data->m_flags.testFlag(CheckSharedData::NoAdditionalProperties)) {
+            QList<Key> strsSchemaProperties(m_checks.keys());
+            QList<Key> strsObjectProperties(object.propertyNames());
+            if (strsSchemaProperties.size() == strsObjectProperties.size()) {
+                // number of properties are the same but lists still may differ
+                qSort(strsSchemaProperties);
+                qSort(strsObjectProperties);
+                if (!qEqual(strsSchemaProperties.constBegin(), strsSchemaProperties.constEnd(), strsObjectProperties.constBegin())) {
+                    // lists of properties differ - return an additionalProperties error
+                    return false;
+                }
+            }
+            else {
+                // number of properties differ - return an additionalProperties error
+                return false;
+            }
+        }
+
         //qDebug() << Q_FUNC_INFO;
         foreach (const Key &key, object.propertyNames()) {
             QVarLengthArray<Check *, 4> empty;
@@ -321,7 +339,15 @@ public:
                     return false;
                 }
             }
+
+            if (Check::m_data->m_additionalPropertySchema && 0 == checks.count() && !m_checks.keys().contains(key)) {
+                // do an extra property check if a property does not exist in the schema
+                if (!Check::m_data->m_additionalPropertySchema->check(property, Check::m_schema->m_callbacks)) {
+                    return false;
+                }
+            }
         }
+
         return true;
     }
 
@@ -336,12 +362,7 @@ public:
         //qDebug() << Q_FUNC_INFO;
 
         // create missing properties list
-        QList<Key> strs;
-        QHashIterator<const Key, QVarLengthArray<Check *, 4> > it(m_checks);
-        while (it.hasNext()) {
-             it.next();
-             strs << it.key();
-         }
+        QList<Key> strs(m_checks.keys());
 
         foreach (const Key &key, object.propertyNames()) {
             QVarLengthArray<Check *, 4> empty;
@@ -384,7 +405,36 @@ public:
     }
 
 private:
-    QHash<const Key, QVarLengthArray<Check *, 4> > m_checks;
+    QHash<Key, QVarLengthArray<Check *, 4> > m_checks;
+};
+
+// 5.4
+template<class T>
+class SchemaPrivate<T>::CheckAdditionalProperties : public Check {
+public:
+    CheckAdditionalProperties(SchemaPrivate *schema, QSharedPointer<CheckSharedData> &data, const Value &_value)
+        : Check(schema, data, "Additional properties check failed for %1")
+    {
+        bool ok, bAdditional = _value.toBoolean(&ok);
+        if (ok && !bAdditional) {
+            Check::m_data->m_flags |= CheckSharedData::NoAdditionalProperties;
+        }
+        else if (!ok) {
+            // object if not bool
+            Object obj = _value.toObject(&ok);
+            if (ok) {
+                // create extra check for additional properties - create new schema
+                Check::m_data->m_additionalPropertySchema = QSharedPointer< Schema<T> >(new Schema<T>(obj, schema->m_callbacks));
+            }
+        }
+        Q_ASSERT(ok);
+    }
+
+    virtual bool doCheck(const Value & value)
+    {
+        // actual check is done in CheckAdditionalProperties::doCheck
+        return true;
+    }
 };
 
 // 5.5
@@ -397,8 +447,16 @@ public:
         // qDebug()  << Q_FUNC_INFO << this;
         bool ok;
         Object obj = schema.toObject(&ok);
+        if (ok) {
+            m_schema = Schema<T>(obj, schemap->m_callbacks);
+        }
+        else {
+            ValueList list = schema.toList(&ok);
+            if (ok) {
+                Q_ASSERT(false); // TODO
+            }
+        }
         Q_ASSERT(ok);
-        m_schema = Schema<T>(obj, schemap->m_callbacks);
     }
 
     virtual bool doCheck(const Value& value)
@@ -1029,6 +1087,10 @@ typename SchemaPrivate<T>::Check *SchemaPrivate<T>::createCheckPoint(const Key &
     case QStaticStringHash<'p','r','o','p','e','r','t','i','e','s'>::Hash:
         if (QString::fromLatin1("properties") == keyName)
             return new CheckProperties(this, data, value);
+        break;
+    case QStaticStringHash<'a','d','d','i','t','i','o','n','a','l','p','r','o','p','e','r','t','i','e','s'>::Hash:
+        if (QString::fromLatin1("additionalproperties") == keyName)
+            return new CheckAdditionalProperties(this, data, value);
         break;
     case QStaticStringHash<'d','e','s','c','r','i','p','t','i','o','n'>::Hash:
         if (QString::fromLatin1("description") == keyName)

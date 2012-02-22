@@ -361,11 +361,10 @@ QJsonObject SchemaValidator::_loadFromData(const QByteArray & json, const QStrin
 
     QJsonObject ret;
     QString schemaName;
-    if (UseProperty == type && schemaObject.contains(name))
+    if (UseProperty == type && !name.isEmpty() && schemaObject.contains(name))
     {
         // retrive object type from JSON element
-        // don't need this element any more (?)
-        schemaName = schemaObject.take(name).toString();
+        schemaName = schemaObject[name].toString();
     }
     else if (UseProperty != type)
     {

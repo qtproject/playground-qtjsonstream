@@ -151,11 +151,13 @@ class SchemaPrivate : public QSharedData
         enum Flag {
             NoFlags = 0x0,
             ExclusiveMinimum = 0x1,
-            ExclusiveMaximum = 0x2
+            ExclusiveMaximum = 0x2,
+            NoAdditionalProperties = 0x4
         };
         Q_DECLARE_FLAGS(Flags, Flag)
         Flags m_flags;
         QSharedPointer<Value> m_default; // keeps a default value
+        QSharedPointer< Schema<T> > m_additionalPropertySchema;
     };
 
     class Check {
@@ -202,6 +204,8 @@ class SchemaPrivate : public QSharedData
     class CheckType;
     // 5.2
     class CheckProperties;
+    // 5.4
+    class CheckAdditionalProperties;
     // 5.5
     class CheckItems;
     // 5.7

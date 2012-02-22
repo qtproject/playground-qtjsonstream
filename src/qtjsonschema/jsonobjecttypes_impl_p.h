@@ -255,8 +255,10 @@ inline void JsonObjectTypes::Value::toNull(bool *ok) const
     switch (m_type) {
     case Map:
         *ok = typeMap() == QJsonValue::Null;
+        return;
     case List:
         *ok = typeList() == QJsonValue::Null;
+        return;
     case RootMap:
     default:
         Q_ASSERT(false);
