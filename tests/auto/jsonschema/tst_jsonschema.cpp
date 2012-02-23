@@ -355,7 +355,7 @@ void tst_JsonSchema::testPatternValidation()
 
     QVERIFY(!validate(QJsonValue(QString("")), "{ \"pattern\" : \"^ $\" }"));
     QVERIFY(!validate(QJsonValue(QString("today")), "{ \"pattern\" : \"dam\" }"));
-//fix    QVERIFY(!validate(QJsonValue(QString("aaaaa")), "{ \"pattern\" : \"aa(a\" }"));
+    QVERIFY(!validate(QJsonValue(QString("aaaaa")), "{ \"pattern\" : \"aa(a\" }"));
 }
 
 // 5.17, 5.18
@@ -441,7 +441,7 @@ void tst_JsonSchema::testDivisibleByValidation()
     QVERIFY(validate(QJsonValue(5), "{ \"divisibleBy\" : 2.5 }"));
     QVERIFY(validate(QJsonValue(7.5), "{ \"divisibleBy\" : 2.5 }"));
 
-//fix    QVERIFY(!validate(QJsonValue(0), "{ \"divisibleBy\" : 0 }"));
+    QVERIFY(!validate(QJsonValue(0), "{ \"divisibleBy\" : 0 }"));
     QVERIFY(!validate(QJsonValue(7), "{ \"divisibleBy\" : 5 }"));
     QVERIFY(!validate(QJsonValue(4.5), "{ \"divisibleBy\" : 2 }"));
     QVERIFY(!validate(QJsonValue(7.5), "{ \"divisibleBy\" : 1.8 }"));

@@ -164,7 +164,9 @@ public:
         inline QJsonObject error() const;
 
         // interface
-        inline void setError(const QString &message);
+        inline void setValidationError(const QString &message);
+        inline void setLoadError(const QString &message);
+        inline void setSubError(const QString &message, int errorCode);
         inline SchemaValidation::Schema<JsonObjectTypes> loadSchema(const QString &schemaName);
 
     private:

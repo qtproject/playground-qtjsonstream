@@ -59,7 +59,11 @@ public:
         InvalidObject,              // Unable to parse an incoming object
         FailedSchemaFileOpenRead,   // Schema file could not be opened or read from
         InvalidSchemaFolder,        // Schema folder does not exist
-        InvalidSchemaLoading        // Schema loading errors
+        InvalidSchemaLoading,       // Schema loading errors
+
+        // Schema Errors
+        SchemaWrongParamType = 100,
+        SchemaWrongParamValue
     };
 
     SchemaError() {}

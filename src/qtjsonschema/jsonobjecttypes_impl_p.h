@@ -362,10 +362,24 @@ inline QJsonObject JsonObjectTypes::Service::error() const
     return m_errorMap;
 }
 
-inline void JsonObjectTypes::Service::setError(const QString &message)
+inline void JsonObjectTypes::Service::setValidationError(const QString &message)
 {
     m_errorMap.insert(SchemaError::kCodeStr, SchemaError::FailedSchemaValidation);
     m_errorMap.insert(SchemaError::kMessageStr, message);
+}
+
+inline void JsonObjectTypes::Service::setLoadError(const QString &message)
+{
+    m_errorMap.insert(SchemaError::kCodeStr, SchemaError::InvalidSchemaLoading);
+    m_errorMap.insert(SchemaError::kMessageStr, message);
+}
+
+inline void JsonObjectTypes::Service::setSubError(const QString &message, int errorCode)
+{
+    QJsonObject error;
+    error.insert(SchemaError::kCodeStr, errorCode);
+    error.insert(SchemaError::kMessageStr, message);
+    m_errorMap.insert(QString("%1").arg(m_errorMap.count()), error);
 }
 
 inline SchemaValidation::Schema<JsonObjectTypes> JsonObjectTypes::Service::loadSchema(const QString &schemaName)

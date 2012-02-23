@@ -54,6 +54,9 @@
 
 QT_BEGIN_HEADER
 
+#include "schemaerror.h"
+QT_USE_NAMESPACE_JSONSTREAM
+
 namespace SchemaValidation {
 
 /**
@@ -525,7 +528,10 @@ public:
     {
         bool ok;
         m_min = minimum.toDouble(&ok);
-        Q_ASSERT(ok);
+
+        if (!ok) {
+            Check::m_schema->setLoadError("wrong 'minimum' value", minimum, SchemaError::SchemaWrongParamType);
+        }
     }
 
     virtual bool doCheck(const Value &value)
@@ -548,7 +554,10 @@ public:
         // qDebug()  << Q_FUNC_INFO << this;
         bool ok;
         m_max = maximum.toDouble(&ok);
-        Q_ASSERT(ok);
+
+        if (!ok) {
+            Check::m_schema->setLoadError("wrong 'maximum' value", maximum, SchemaError::SchemaWrongParamType);
+        }
     }
 
     virtual bool doCheck(const Value &value)
@@ -580,12 +589,15 @@ public:
             else if (value == QString::fromLatin1("true"))
                 bExclusive = true;
             else
-                Q_ASSERT(false);
+                ok = false;
 
             if (!value.isEmpty())
                 qWarning() << QString::fromLatin1("Wrong 'exclusiveMinimum' syntax found, instead of boolean type a string was used");
         }
-        Q_ASSERT(ok);
+
+        if (!ok) {
+            Check::m_schema->setLoadError("wrong 'exclusiveMinimum' value", _value, SchemaError::SchemaWrongParamType);
+        }
 
         if (bExclusive) {
             Check::m_data->m_flags |= CheckSharedData::ExclusiveMinimum;
@@ -617,12 +629,15 @@ public:
             else if (value == QString::fromLatin1("true"))
                 bExclusive = true;
             else
-                Q_ASSERT(false);
+                ok = false;
 
             if (!value.isEmpty())
                 qWarning() << QString::fromLatin1("Wrong 'exclusiveMaximum' syntax found, instead of boolean type a string was used");
         }
-        Q_ASSERT(ok);
+
+        if (!ok) {
+            Check::m_schema->setLoadError("wrong 'exclusiveMaximum' value", _value, SchemaError::SchemaWrongParamType);
+        }
 
         if (bExclusive) {
             Check::m_data->m_flags |= CheckSharedData::ExclusiveMaximum;
@@ -646,7 +661,9 @@ public:
     {
         bool ok;
         m_min = minimum.toInt(&ok);
-        Q_ASSERT(ok);
+        if (!ok) {
+            Check::m_schema->setLoadError("wrong 'minItems' value", minimum, SchemaError::SchemaWrongParamType);
+        }
     }
 
     virtual bool doCheck(const Value &value)
@@ -668,7 +685,9 @@ public:
     {
         bool ok;
         m_max = maximum.toInt(&ok);
-        Q_ASSERT(ok);
+        if (!ok) {
+            Check::m_schema->setLoadError("wrong 'maxItems' value", maximum, SchemaError::SchemaWrongParamType);
+        }
     }
 
     virtual bool doCheck(const Value &value)
@@ -692,7 +711,10 @@ public:
         bool ok;
         QString patternString = patternValue.toString(&ok);
         m_regexp.setPattern(patternString);
-        Q_ASSERT(ok && m_regexp.isValid());
+        if (!ok || !m_regexp.isValid()) {
+            Check::m_schema->setLoadError("wrong 'pattern' value", patternValue,
+                                          !ok ? SchemaError::SchemaWrongParamType : SchemaError::SchemaWrongParamValue);
+        }
     }
 
     virtual bool doCheck(const Value &value)
@@ -928,7 +950,10 @@ public:
         // qDebug()  << Q_FUNC_INFO << this;
         bool ok;
         m_div = value.toDouble(&ok);
-        Q_ASSERT(ok && m_div != 0);
+
+        if (!ok || m_div == 0)
+            Check::m_schema->setLoadError("wrong 'divisibleBy' value", value,
+                                          !ok ? SchemaError::SchemaWrongParamType : SchemaError::SchemaWrongParamValue);
     }
 
     virtual bool doCheck(const Value &value)
@@ -1017,7 +1042,7 @@ public:
             const QString msg =  QString::fromLatin1("Schema extends %1 but it is unknown.")
                     .arg(schemaName);
             qWarning() << msg;
-            schema->m_callbacks->setError(msg);
+            schema->m_callbacks->setValidationError(msg);
         }
     }
     virtual bool doCheck(const Value &value)
@@ -1194,7 +1219,7 @@ bool SchemaPrivate<T>::check(const Value &value) const
         }
     }
     if (m_requiredCount != m_maxRequired) {
-        m_callbacks->setError(QString::fromLatin1("Schema validation error: Required field is missing"));
+        m_callbacks->setValidationError(QString::fromLatin1("Schema validation error: Required field is missing"));
         return false;
     }
     return true;
@@ -1207,6 +1232,21 @@ void SchemaPrivate<T>::checkDefault(Value &value, Object &object) const
         check->checkDefault(value, object);
     }
 }
+
+template<class T>
+void SchemaPrivate<T>::setLoadError(const char *message, const Value & value, int code)
+{
+    if (!m_bLoadError) {
+        m_callbacks->setLoadError(QString::fromLatin1("Schema errors found. Schema can not be loaded properly."));
+        m_bLoadError = true;
+    }
+
+    QString str;
+    QDebug(&str) << value.value(); // put parameter value into the message
+    str = QString("Schema Error: %1 ( %2 )").arg(message).arg(str);
+    m_callbacks->setSubError(str, code);
+}
+
 
 } // namespace SchemaValidation
 

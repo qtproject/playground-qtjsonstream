@@ -37,9 +37,7 @@ SCHEMA_HEADERS = \
     $$PWD/qtjsonschema/schemamanager_impl_p.h \
     $$PWD/qtjsonschema/schemamanager_p.h \
     $$PWD/qtjsonschema/jsonobjecttypes_p.h \
-    $$PWD/qtjsonschema/jsonobjecttypes_impl_p.h \
-    $$PWD/qtjsonschema/varobjecttypes_p.h \
-    $$PWD/qtjsonschema/varobjecttypes_impl_p.h
+    $$PWD/qtjsonschema/jsonobjecttypes_impl_p.h
 
 SCHEMA_SOURCES = \
     $$PWD/qtjsonschema/schemaerror.cpp \

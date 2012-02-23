@@ -93,7 +93,9 @@ namespace SchemaValidation {
 // ValueList::constEnd()
 // ValueList::const_iterator()
 //
-// void Service::setError(const QString &message)
+// void Service::setValidationError(const SchemaError &error)
+// void Service::setLoadError(const QString &message)
+// void Service::setSubError(const QString &message, int errorCode)
 // Schema<T> Service::loadSchema(const QString &name)
 
 template<class T>
@@ -128,6 +130,12 @@ public:
     {
         return d_ptr->isValid();
     }
+
+    bool hasErrors() const
+    {
+        return d_ptr->hasErrors();
+    }
+
 private:
 
     friend class SchemaPrivate<T>;
@@ -178,7 +186,7 @@ class SchemaPrivate : public QSharedData
                 bool ok;
                 // TODO it is tricky, as we do not have access to source code of this schema.
                 // maybe we can set "additional, hidden " source property in each schema property, or some nice hash?
-                m_schema->m_callbacks->setError(QLatin1String("Schema validation error: ") +
+                m_schema->m_callbacks->setValidationError(QLatin1String("Schema validation error: ") +
                                                 QString::fromLatin1(m_errorMessage).arg(value.toString(&ok)));
             }
             return result;
@@ -252,6 +260,7 @@ public:
         : m_maxRequired(0)
         , m_requiredCount(0)
         , m_callbacks(0)
+        , m_bLoadError(false)
     {}
     ~SchemaPrivate()
     {
@@ -279,16 +288,24 @@ public:
     bool isValid() const
     {
         // we have some checks so it means that something got compiled.
-        return m_checks.size();
+        return m_checks.size() && !m_bLoadError;
+    }
+
+    bool hasErrors() const
+    {
+        return m_bLoadError;
     }
 
     void checkDefault(Value &value, Object &object) const;
+
+    void setLoadError(const char *, const Value &, int);
 
 private:
     QVarLengthArray<Check *, 4> m_checks;
     qint32 m_maxRequired;
     mutable qint32 m_requiredCount;
     mutable Service *m_callbacks;
+    bool m_bLoadError;
 };
 
 }

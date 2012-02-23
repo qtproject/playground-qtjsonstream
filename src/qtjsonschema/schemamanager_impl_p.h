@@ -84,7 +84,12 @@ template<class T, class TT>
 inline T SchemaManager<T,TT>::ensureCompiled(const QString &schemaName, MapSchemaPair *pair, TypesService *callbacks)
 {
     SchemaValidation::Schema<TT> schema(pair->second);
-    if (!schema.isValid()) {
+    if (schema.hasErrors())
+    {
+        callbacks->setLoadError("Schema errors found. Schema can not be loaded properly.");
+        return callbacks->error();
+    }
+    else if (!schema.isValid()) {
         // Try to compile schema
         typename TT::Object schemaObject(pair->first);
         SchemaValidation::Schema<TT> compiledSchema(schemaObject, callbacks);
@@ -103,10 +108,12 @@ inline T SchemaManager<T,TT>::validate(const QString &schemaName, T object)
 
     TypesService callbacks(this);
     MapSchemaPair schemaPair = m_schemas.value(schemaName);
-    ensureCompiled(schemaName, &schemaPair, &callbacks);
-    SchemaValidation::Schema<TT> schema(schemaPair.second);
-    typename TT::Value rootObject(QString(), object);
-    /*bool result = */ schema.check(rootObject, &callbacks);
+    if (ensureCompiled(schemaName, &schemaPair, &callbacks).isEmpty()) {
+        // schema compiled successfully can validate an object
+        SchemaValidation::Schema<TT> schema(schemaPair.second);
+        typename TT::Value rootObject(QString(), object);
+        schema.check(rootObject, &callbacks);
+    }
     return callbacks.error();
 }
 
