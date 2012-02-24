@@ -43,6 +43,7 @@
 #include <QObject>
 #include <QJsonObject>
 #include <QRegExp>
+#include <QStringList>
 
 #include "jsonschema-global.h"
 #include "schemaerror.h"
@@ -83,7 +84,7 @@ public:
 
     // allows faster validation by matching between json object and schema name without doing schema iteration
     class SchemaNameMatcher;
-    void setSchemaNameMatcher(SchemaNameMatcher *);
+    void setSchemaNameMatcher(const SchemaNameMatcher &);
 
 protected:
     QJsonObject setSchema(const QString &schemaName, QJsonObject schema);
@@ -107,35 +108,71 @@ public:
     class SchemaNameMatcher
     {
     public:
+        SchemaNameMatcher(bool _bCanIndex) : m_bCanIndex(_bCanIndex) {}
         virtual ~SchemaNameMatcher() {}
+        virtual SchemaNameMatcher *clone() const = 0;
 
-        // knowing exact schema name allows to skip schema iteration and validate with a single schema only
-        virtual QString getSchemaName(const QJsonObject &) { return QString::null; }
+        bool canIndex() const { return m_bCanIndex; }
 
-        // limit schemas iteration by matching json object with some schemas
-        // -1 - no match, 0 - exact match, 1 - may match
-        virtual int match(const QJsonObject &object, const QString &schemaName) = 0;
+        // creates an index for a schema to do quicker name matching
+        virtual void createIndex(const QString &, const QJsonObject &) {}
+
+        // knowing exact schema name allows to skip schema iteration and validate with some schemas only
+        virtual QStringList getExactMatches(const QJsonObject &) = 0;
+        virtual QStringList getPossibleMatches(const QJsonObject &) { return QStringList(); }
+
+        virtual void reset() {}
+protected:
+        bool m_bCanIndex;
     };
 
     // schema name is defined by a property value in json object
     class SchemaPropertyNameMatcher : public SchemaNameMatcher
     {
     public:
-        SchemaPropertyNameMatcher(const QString & property) : m_property(property) {}
+        SchemaPropertyNameMatcher(const QString & property) : SchemaNameMatcher(false), m_property(property) {}
+        SchemaNameMatcher *clone() const { return new SchemaPropertyNameMatcher(*this); }
 
-        virtual QString getSchemaName(const QJsonObject &object)
+        virtual QStringList getExactMatches(const QJsonObject &object)
         {
-            return !m_property.isEmpty() && object.contains(m_property) ? object[m_property].toString() : QString::null;
-        }
-
-        // -1 - no match, 0 - exact match, 1 - may match
-        virtual int match(const QJsonObject &object, const QString &schemaName)
-        {
-            return getSchemaName(object) == schemaName ? 0 : -1;
+            QStringList strs;
+            if (!m_property.isEmpty() && object.contains(m_property)) {
+                QString str(object[m_property].toString());
+                if (!str.isEmpty())
+                    strs.append(str);
+            }
+            return strs;
         }
 
     private:
         QString m_property;
+    };
+
+    // schema contains a uniquely defined top-level key/property that can be used as a quick index
+    class SchemaUniqueKeyNameMatcher : public SchemaNameMatcher
+    {
+    public:
+        SchemaUniqueKeyNameMatcher(const QString & key);
+        ~SchemaUniqueKeyNameMatcher();
+        SchemaNameMatcher *clone() const { return new SchemaUniqueKeyNameMatcher(m_key); }
+
+        // creates an index for a schema to do quicker name matching
+        virtual void createIndex(const QString &schemaName, const QJsonObject & schema);
+
+        // knowing exact schema name allows to skip schema iteration and validate with some schemas only
+        virtual QStringList getExactMatches(const QJsonObject &);
+
+        // possible matches will be validated too if exact match is missing
+        virtual QStringList getPossibleMatches(const QJsonObject &);
+
+        virtual void reset();
+
+    private:
+        QString m_key;
+
+        class SchemaUniqueKeyNameMatcherPrivate;
+        SchemaUniqueKeyNameMatcherPrivate * const d_ptr;
+        Q_DECLARE_PRIVATE(SchemaUniqueKeyNameMatcher);
     };
 };
 

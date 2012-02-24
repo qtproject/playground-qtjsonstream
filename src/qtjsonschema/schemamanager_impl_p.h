@@ -117,6 +117,18 @@ inline T SchemaManager<T,TT>::validate(const QString &schemaName, T object)
     return callbacks.error();
 }
 
+template<class T, class TT>
+inline QMap<QString, T> SchemaManager<T,TT>::schemas() const
+{
+    QMap<QString, T> map;
+    typename QMap<QString, MapSchemaPair>::const_iterator it(m_schemas.constBegin());
+    while (it != m_schemas.constEnd()) {
+        map.insert(it.key(), it.value().first);
+        ++it;
+    }
+    return map;
+}
+
 QT_END_NAMESPACE_JSONSTREAM
 
 #endif // SCHEMAMANAGER_IMPL_P_H

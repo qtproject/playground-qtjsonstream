@@ -66,7 +66,7 @@ class SchemaValidator::SchemaValidatorPrivate
 {
 public:
     SchemaValidatorPrivate()
-        : m_bFiltered(false), m_matcher(0)
+        : m_bInit(false), m_matcher(0)
     {
 
     }
@@ -75,7 +75,7 @@ public:
     SchemaError mLastError;
 
     QRegExp m_filter;
-    bool m_bFiltered;
+    bool m_bInit; // filtering & indexing status (false-todo, true-done)
     QStringList m_strsFilteredSchemas;
 
     QSharedPointer<SchemaNameMatcher> m_matcher;
@@ -171,7 +171,7 @@ void SchemaValidator::clear()
 void SchemaValidator::setValidationFilter(const QRegExp &filter)
 {
     d_ptr->m_filter = filter;
-    d_ptr->m_bFiltered = false; // clear last filtering result
+    d_ptr->m_bInit = false; // clear last filtering & indexing results
 }
 
 /*!
@@ -179,9 +179,10 @@ void SchemaValidator::setValidationFilter(const QRegExp &filter)
     without doing a full schema validation. This allows to do a validation without
     iteration through all schemas.
 */
-void SchemaValidator::setSchemaNameMatcher(SchemaNameMatcher *matcher)
+void SchemaValidator::setSchemaNameMatcher(const SchemaNameMatcher &matcher)
 {
-    d_ptr->m_matcher = QSharedPointer<SchemaNameMatcher>(matcher);
+    d_ptr->m_matcher = QSharedPointer<SchemaNameMatcher>(matcher.clone());
+    d_ptr->m_bInit = false; // clear last filtering & indexing results
 }
 
 
@@ -197,7 +198,7 @@ bool SchemaValidator::loadFromFolder(const QString & path, const QString & schem
 {
     Q_D(SchemaValidator);
     d->mLastError = _loadFromFolder(path, schemaNameProperty, ext);
-    d_ptr->m_bFiltered = false; // clear last filtering result
+    d_ptr->m_bInit = false; // clear last filtering & indexing results
     return SchemaError::NoError == d->mLastError.errorCode();
 }
 
@@ -210,7 +211,7 @@ bool SchemaValidator::loadFromFile(const QString &filename, SchemaNameInitializa
 {
     Q_D(SchemaValidator);
     d->mLastError = _loadFromFile(filename, type, schemaName);
-    d_ptr->m_bFiltered = false; // clear last filtering result
+    d_ptr->m_bInit = false; // clear last filtering & indexing results
     return SchemaError::NoError == d->mLastError.errorCode();
 }
 
@@ -223,7 +224,7 @@ bool SchemaValidator::loadFromData(const QByteArray & json, const QString & name
 {
     Q_D(SchemaValidator);
     d->mLastError = _loadFromData(json, name, type);
-    d_ptr->m_bFiltered = false; // clear last filtering result
+    d_ptr->m_bInit = false; // clear last filtering & indexing results
     return SchemaError::NoError == d->mLastError.errorCode();
  }
 
@@ -413,43 +414,57 @@ bool SchemaValidator::validateSchema(const QJsonObject &object)
     Q_D(SchemaValidator);
     //qDebug() << "VALIDATE: " << object;
 
-    // do filtering only once
-    if (!d->m_filter.isEmpty() && !d->m_bFiltered)
-    {
-        d->m_bFiltered = true;
-        d->m_strsFilteredSchemas = schemaNames().filter(d->m_filter);
-    }
-
-    const QStringList strsSchemas(d->m_filter.isEmpty() ? schemaNames() : d->m_strsFilteredSchemas);
-
-    if (d->m_matcher)
-    {
-        QString strSchema = d->m_matcher->getSchemaName(object);
-        if (!strSchema.isEmpty()) {
-            return validateSchema(strSchema, object);
-        }
-    }
-
-    // iterate through schemas and find a valid one (may be fast is SchemaNameMatcher is defined)
-    foreach (QString strSchema, strsSchemas) {
-        if (d->m_matcher)
+    // do filtering & indexing initialization only once
+    if (!d->m_bInit) {
+        d->m_bInit = true;
+        if (!d->m_filter.isEmpty())
         {
-            switch (d->m_matcher->match(object, strSchema)) {
-            case 0:
-                return validateSchema(strSchema, object);
-            case -1:
-                continue;
+            d->m_strsFilteredSchemas = schemaNames().filter(d->m_filter);
+        }
+
+        // do indexing if required
+        if (d->m_matcher && d->m_matcher->canIndex()) {
+            // use filtered schemas if filter is set
+            const QStringList strsSchemas(d->m_filter.isEmpty() ? schemaNames() : d->m_strsFilteredSchemas);
+            QMap<QString, QJsonObject> map(d_ptr->mSchemas.schemas());
+            d->m_matcher->reset();
+            foreach (QString strSchema, strsSchemas) {
+                QMap<QString, QJsonObject>::const_iterator it(map.find(strSchema));
+                if (it != map.end())
+                    d->m_matcher->createIndex(it.key(), it.value());
             }
-
-        }
-
-        if (validateSchema(strSchema, object))
-        {
-            //qDebug() << "found schema: " << strSchema;
-            return true;
         }
     }
 
+    if (!d->m_matcher) {
+        const QStringList strsSchemas(d->m_filter.isEmpty() ? schemaNames() : d->m_strsFilteredSchemas);
+
+        // iterate through all schemas and find a valid one (not efficient way to do this without matcher)
+        foreach (QString strSchema, strsSchemas) {
+            if (validateSchema(strSchema, object)) {
+                //qDebug() << "found schema: " << strSchema;
+                return true;
+            }
+        }
+    }
+    else {
+        // matcher allows much faster validation
+        QStringList strsSchemas(d->m_matcher->getExactMatches(object));
+        foreach (QString strSchema, strsSchemas) {
+            if (validateSchema(strSchema, object)) {
+                //qDebug() << "found schema @ ex: " << strSchema;
+                return true;
+            }
+        }
+
+        strsSchemas = d->m_matcher->getPossibleMatches(object);
+        foreach (QString strSchema, strsSchemas) {
+            if (validateSchema(strSchema, object)) {
+                //qDebug() << "found schema @ pos: " << strSchema;
+                return true;
+            }
+        }
+    }
     return false;
 }
 
@@ -461,6 +476,74 @@ QJsonObject SchemaValidator::setSchema(const QString &schemaName, QJsonObject sc
     QJsonObject ret = d_ptr->mSchemas.insert(schemaName, schema);
     //qDebug() << "setSchema::errors: " << ret;
     return ret;
+}
+
+/*!
+    \class SchemaValidator::SchemaUniqueKeyNameMatcher
+
+    \brief The SchemaUniqueKeyNameMatcher class implements a name matcher when
+    schema contains a uniquely defined top-level key/property that can be used as a quick index
+*/
+
+class SchemaValidator::SchemaUniqueKeyNameMatcher::SchemaUniqueKeyNameMatcherPrivate
+{
+public:
+    QMultiMap<QString,QString> m_map;
+    QStringList m_others;
+};
+
+SchemaValidator::SchemaUniqueKeyNameMatcher::SchemaUniqueKeyNameMatcher(const QString & key)
+    : SchemaNameMatcher(true)
+    , m_key(key)
+    , d_ptr(new SchemaUniqueKeyNameMatcherPrivate)
+{
+}
+
+SchemaValidator::SchemaUniqueKeyNameMatcher::~SchemaUniqueKeyNameMatcher()
+{
+    if (d_ptr)
+        delete d_ptr;
+}
+
+/*!
+  Creates an index for a \a schema named \a schemaName to do a quicker name matching
+*/
+void SchemaValidator::SchemaUniqueKeyNameMatcher::createIndex(const QString &schemaName, const QJsonObject & schema)
+{
+    if (schema.contains("properties")) {
+        QJsonValue props = schema["properties"];
+        if (props.isObject() && props.toObject().contains(m_key)) {
+            QJsonObject o = props.toObject()[m_key].toObject();
+            if (o.contains("required") && o.contains("type") && o.contains("pattern")) {
+                if (true == o["required"].toBool() && o["type"].toString() == QLatin1String("string")) {
+                    QString key = o["pattern"].toString();
+                    if (!key.isEmpty())
+                    {
+                        d_ptr->m_map.insert(key, schemaName);
+                        return;
+                    }
+                }
+            }
+        }
+    }
+    d_ptr->m_others.append(schemaName);
+}
+
+QStringList SchemaValidator::SchemaUniqueKeyNameMatcher::getExactMatches(const QJsonObject &object)
+{
+    QString str(!m_key.isEmpty() && object.contains(m_key) ? object[m_key].toString() : QString::null);
+    return !str.isEmpty() ? d_ptr->m_map.values(str) : QStringList();
+}
+
+QStringList SchemaValidator::SchemaUniqueKeyNameMatcher::getPossibleMatches(const QJsonObject &)
+{
+    return d_ptr->m_others;
+}
+
+void SchemaValidator::SchemaUniqueKeyNameMatcher::reset()
+{
+    d_ptr->m_map.clear();
+    d_ptr->m_others.clear();
 }
 
 #include "moc_schemavalidator.cpp"

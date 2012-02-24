@@ -428,11 +428,12 @@ void tst_JsonStream::schemaTest()
     server.setValidatorFlags(JsonServer::ValidatorFlags(JsonServer::WarnIfInvalid | JsonServer::DropIfInvalid));
     server.inboundValidator()->loadFromFolder(strSchemasDir);
     server.inboundValidator()->setValidationFilter(QRegExp("Paint\\w+Event|BackgroundEvent"));
-    server.inboundValidator()->setSchemaNameMatcher(new SchemaValidator::SchemaPropertyNameMatcher("event"));
+    server.inboundValidator()->setSchemaNameMatcher(SchemaValidator::SchemaUniqueKeyNameMatcher("event"));
 
 
     server.outboundValidator()->loadFromFolder(strSchemasDir);
     server.outboundValidator()->setValidationFilter(QRegExp("Reply\\w+"));
+    server.outboundValidator()->setSchemaNameMatcher(SchemaValidator::SchemaUniqueKeyNameMatcher("event"));
 
     QVERIFY(!server.inboundValidator()->isEmpty());
     QVERIFY(!server.outboundValidator()->isEmpty());

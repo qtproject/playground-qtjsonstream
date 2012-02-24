@@ -433,7 +433,7 @@ public:
         Q_ASSERT(ok);
     }
 
-    virtual bool doCheck(const Value & value)
+    virtual bool doCheck(const Value &)
     {
         // actual check is done in CheckAdditionalProperties::doCheck
         return true;
@@ -826,7 +826,7 @@ public:
         Check::m_data->m_default = QSharedPointer<Value>(new Value(value));
     }
 
-    virtual bool doCheck(const Value &value)
+    virtual bool doCheck(const Value &)
     {
         return true;
     }

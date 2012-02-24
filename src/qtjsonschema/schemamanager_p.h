@@ -71,6 +71,7 @@ public:
     inline T validate(const QString &schemaName, T object);
 
     QStringList names() const { return m_schemas.keys(); }
+    inline QMap<QString, T> schemas() const;
 
     bool isEmpty() const { return m_schemas.isEmpty(); }
     void clear() { m_schemas.clear(); }

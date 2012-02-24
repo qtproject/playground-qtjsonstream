@@ -194,7 +194,7 @@ class SchemaPrivate : public QSharedData
 
         Value* getDefault() const { return m_data && m_data->m_default ? m_data->m_default.data() : 0; }
 
-        virtual void checkDefault(Value& value, Object &object) const {} // do nothing in generic case
+        virtual void checkDefault(Value &, Object &) const {} // do nothing in generic case
 
     protected:
         SchemaPrivate *m_schema;
