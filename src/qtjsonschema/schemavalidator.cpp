@@ -154,6 +154,7 @@ bool SchemaValidator::hasSchema(const QString & name)
 void SchemaValidator::removeSchema(const QString & name)
 {
     d_ptr->mSchemas.take(name);
+    d_ptr->m_bInit = false; // clear last filtering & indexing results
 }
 
 /*!
@@ -488,7 +489,7 @@ QJsonObject SchemaValidator::setSchema(const QString &schemaName, QJsonObject sc
 class SchemaValidator::SchemaUniqueKeyNameMatcher::SchemaUniqueKeyNameMatcherPrivate
 {
 public:
-    QMultiMap<QString,QString> m_map;
+    QHash<QString,QStringList> m_items;
     QStringList m_others;
 };
 
@@ -519,7 +520,11 @@ void SchemaValidator::SchemaUniqueKeyNameMatcher::createIndex(const QString &sch
                     QString key = o["pattern"].toString();
                     if (!key.isEmpty())
                     {
-                        d_ptr->m_map.insert(key, schemaName);
+                        QHash<QString,QStringList>::iterator it(d_ptr->m_items.find(key));
+                        if (it != d_ptr->m_items.end())
+                            (*it).append(schemaName);
+                        else
+                            d_ptr->m_items.insert(key, QStringList() << schemaName);
                         return;
                     }
                 }
@@ -532,7 +537,8 @@ void SchemaValidator::SchemaUniqueKeyNameMatcher::createIndex(const QString &sch
 QStringList SchemaValidator::SchemaUniqueKeyNameMatcher::getExactMatches(const QJsonObject &object)
 {
     QString str(!m_key.isEmpty() && object.contains(m_key) ? object[m_key].toString() : QString::null);
-    return !str.isEmpty() ? d_ptr->m_map.values(str) : QStringList();
+    QHash<QString,QStringList>::const_iterator it;
+    return !str.isEmpty() && (it = d_ptr->m_items.find(str)) != d_ptr->m_items.end() ? *it : QStringList();
 }
 
 QStringList SchemaValidator::SchemaUniqueKeyNameMatcher::getPossibleMatches(const QJsonObject &)
@@ -542,7 +548,7 @@ QStringList SchemaValidator::SchemaUniqueKeyNameMatcher::getPossibleMatches(cons
 
 void SchemaValidator::SchemaUniqueKeyNameMatcher::reset()
 {
-    d_ptr->m_map.clear();
+    d_ptr->m_items.clear();
     d_ptr->m_others.clear();
 }
 
