@@ -60,7 +60,8 @@ private slots:
     void testAdditionalPropertiesValidation();
     // 5.5 items
     void testItemsValidation();
-    // TODO: 5.6 additionalItems
+    // 5.6 additionalItems
+    void testAdditionalItems();
     // 5.7
     void testRequiredValidation();
     // TODO: 5.8 dependencies
@@ -228,17 +229,17 @@ void tst_JsonSchema::testAdditionalPropertiesValidation()
     array.append(QLatin1String("foo"));
     array.append(QLatin1String("two")); //["foo", "two"]
     QVERIFY(validate(array, "{ \"items\" : { \"type\" : \"string\" }, \"additionalProperties\" : false }"));
-#ifdef FIX
     QVERIFY(validate(array, "{ \"items\" : [ { \"type\" : \"string\" }, { \"type\" : \"string\" } ], \"additionalProperties\" : false }"));
 
     array.append(3); // ["foo", "two", 3]
     QVERIFY(validate(array,
         "{ \"items\" : [ { \"type\" : \"string\" }, { \"type\" : \"string\" } ], \"additionalProperties\" : { \"type\" : \"number\"  } }"));
+    QVERIFY(!validate(array,
+        "{ \"items\" : [ { \"type\" : \"string\" }, { \"type\" : \"string\" } ], \"additionalProperties\" : { \"type\" : \"string\"  } }"));
 
     array[2] = QLatin1String("three"); // ["foo", "two", "three"]
     QVERIFY(validate(array,
         "{ \"items\" : [ { \"type\" : \"string\" }, { \"type\" : \"string\" }, { \"type\" : \"string\" } ], \"additionalProperties\" : { \"type\" : \"number\"  } }"));
-#endif
 }
 
 // 5.5 items
@@ -254,7 +255,7 @@ void tst_JsonSchema::testItemsValidation()
     array.append(2); // ["foo", 2]
     QVERIFY(!validate(array, "{ \"type\" : \"array\", \"items\" : { \"type\" : \"string\" } }")); // INVALID
     QVERIFY(!validate(array, "{ \"type\" : \"array\", \"items\" : { \"type\" : \"number\" } }")); // INVALID
-//fix    QVERIFY(validate(array, "{ \"type\" : \"array\", \"items\" : [{ \"type\" : \"string\" }, { \"type\" : \"number\" }] }"));
+    QVERIFY(validate(array, "{ \"type\" : \"array\", \"items\" : [{ \"type\" : \"string\" }, { \"type\" : \"number\" }] }"));
 
     array.removeAt(0); // [2]
     QVERIFY(!validate(array, "{ \"type\" : \"array\", \"items\" : { \"type\" : \"string\" } }")); // INVALID
@@ -263,7 +264,38 @@ void tst_JsonSchema::testItemsValidation()
     array.append(QLatin1String("foo"));
     array.append(QLatin1String("two")); //["foo", "two"]
     // should fail!!!!!
-//fix    QVERIFY(!validate(array, "{ \"type\" : \"array\", \"items\" : [{ \"type\" : \"string\" }, { \"type\" : \"number\" }] }"));
+    QVERIFY(!validate(array, "{ \"type\" : \"array\", \"items\" : [{ \"type\" : \"string\" }, { \"type\" : \"number\" }] }"));
+}
+
+// 5.6 additionalItems
+void tst_JsonSchema::testAdditionalItems()
+{
+    //array tests
+    QJsonArray array;
+    array.append(1); // [1]
+    array.append(2); // [1, 2]
+    array.append(3); // [1, 2, 3]
+
+    QVERIFY(validate(array, "{ \"additionalItems\" : true }"));
+    QVERIFY(validate(array, "{ \"additionalItems\" : { \"type\" : \"number\" } }"));
+    QVERIFY(!validate(array, "{ \"additionalItems\" : false }"));
+    QVERIFY(!validate(array, "{ \"additionalItems\" : { \"type\" : \"string\" } }"));
+
+    array = QJsonArray();
+    array.append(QLatin1String("1")); // ['1']
+    array.append(QLatin1String("2")); // ['1','2']
+
+    QVERIFY(validate(array, "{ \"items\" : { \"type\" : \"string\" }, \"additionalItems\" : false }"));
+    QVERIFY(validate(array, "{ \"items\" : [ { \"type\" : \"string\" }, { \"type\" : \"string\" } ], \"additionalItems\" : false }"));
+
+    array.append(3); // ['1', '2', 3]
+    QVERIFY(validate(array, "{ \"items\" : [ { \"type\" : \"string\" }, { \"type\" : \"string\" } ], \"additionalItems\" : { \"type\" : \"number\" } }"));
+
+    array[2] = QLatin1String("3"); // ['1', '2', '3']
+    QVERIFY(validate(array, "{ \"items\" : [ { \"type\" : \"string\" }, { \"type\" : \"string\" }, { \"type\" : \"string\" } ], \"additionalItems\": { \"type\" : \"number\" } }"));
+
+    QVERIFY(!validate(array, "{ \"items\" : [ { \"type\" : \"string\" }, { \"type\" : \"string\" } ],\"additionalItems\": false }"));
+    QVERIFY(!validate(array, "{ \"items\" : [ { \"type\" : \"string\" }, { \"type\" : \"string\" } ],\"additionalItems\": { \"type\" : \"number\" } }"));
 }
 
 // 5.7

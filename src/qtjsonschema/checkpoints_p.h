@@ -343,9 +343,9 @@ public:
                 }
             }
 
-            if (Check::m_data->m_additionalPropertySchema && 0 == checks.count() && !m_checks.keys().contains(key)) {
+            if (Check::m_data->m_additionalSchema && 0 == checks.count() && !m_checks.keys().contains(key)) {
                 // do an extra property check if a property does not exist in the schema
-                if (!Check::m_data->m_additionalPropertySchema->check(property, Check::m_schema->m_callbacks)) {
+                if (!Check::m_data->m_additionalSchema->check(property, Check::m_schema->m_callbacks)) {
                     return false;
                 }
             }
@@ -427,7 +427,7 @@ public:
             Object obj = _value.toObject(&ok);
             if (ok) {
                 // create extra check for additional properties - create new schema
-                Check::m_data->m_additionalPropertySchema = QSharedPointer< Schema<T> >(new Schema<T>(obj, schema->m_callbacks));
+                Check::m_data->m_additionalSchema = QSharedPointer< Schema<T> >(new Schema<T>(obj, schema->m_callbacks));
             }
         }
         Q_ASSERT(ok);
@@ -445,20 +445,30 @@ template<class T>
 class SchemaPrivate<T>::CheckItems : public Check {
 public:
     CheckItems(SchemaPrivate *schemap, QSharedPointer<CheckSharedData> &data, const Value &schema)
-        : Check(schemap, data, "Items check failed for %1")
+        : Check(schemap, data, "Items check failed for %1"), m_bList(false)
     {
         // qDebug()  << Q_FUNC_INFO << this;
         bool ok;
         Object obj = schema.toObject(&ok);
         if (ok) {
-            m_schema = Schema<T>(obj, schemap->m_callbacks);
+            m_schema.append(Schema<T>(obj, schemap->m_callbacks));
         }
         else {
             ValueList list = schema.toList(&ok);
             if (ok) {
-                Q_ASSERT(false); // TODO
+                m_bList = true;
+                if (list.count() > 1)
+                    m_schema.reserve(list.count());
+                typename ValueList::const_iterator it;
+                for (it = list.constBegin(); it != list.constEnd(); ++it) {
+                    Object obj = (*it).toObject(&ok);
+                    if (ok) {
+                        m_schema.append(Schema<T>(obj, schemap->m_callbacks));
+                    }
+                }
             }
         }
+        Check::m_data->m_flags |= CheckSharedData::HasItems;
         Q_ASSERT(ok);
     }
 
@@ -470,16 +480,87 @@ public:
         if (!ok)
             return false;
 
+        bool bNoAdditional;
+        if ((bNoAdditional = Check::m_data->m_flags.testFlag(CheckSharedData::NoAdditionalItems))) {
+            if (m_bList && array.count() > m_schema.size())
+                return false; // AdditionalItems is set to false
+        }
+
+        int nCnt(0), nIndex(0);
+        Schema<T> & schema = m_schema[0];
         typename ValueList::const_iterator i;
-        for (i = array.constBegin(); i != array.constEnd(); ++i) {
-            if (!m_schema.check(*i, Check::m_schema->m_callbacks)) {
+        for (i = array.constBegin(); i != array.constEnd(); ++i, nCnt++) {
+            if (m_bList) {
+                // for a list each item should have a matching schema
+                if (m_schema.size() > nCnt) {
+                    nIndex = nCnt;
+                    schema = m_schema[nIndex];
+                }
+                else if (Check::m_data->m_additionalSchema) {
+                    schema = *Check::m_data->m_additionalSchema;
+                }
+                else {
+                    return true; // nothing to validate with
+                }
+            }
+
+            if (!schema.check(*i, Check::m_schema->m_callbacks)) {
                 return false;
             }
         }
         return true;
     }
 private:
-    Schema<T> m_schema;
+    QVarLengthArray<Schema<T>, 1> m_schema;
+    bool m_bList;
+};
+
+// 5.6
+template<class T>
+class SchemaPrivate<T>::CheckAdditionalItems : public Check {
+public:
+    CheckAdditionalItems(SchemaPrivate *schema, QSharedPointer<CheckSharedData> &data, const Value &_value)
+        : Check(schema, data, "Additional items check failed for %1")
+    {
+        bool ok, bAdditional = _value.toBoolean(&ok);
+        if (ok && !bAdditional) {
+            Check::m_data->m_flags |= CheckSharedData::NoAdditionalItems;
+        }
+        else if (!ok) {
+            // object if not bool
+            Object obj = _value.toObject(&ok);
+            if (ok) {
+                // create extra check for additional properties - create new schema
+                Check::m_data->m_additionalSchema = QSharedPointer< Schema<T> >(new Schema<T>(obj, schema->m_callbacks));
+            }
+        }
+        Q_ASSERT(ok);
+    }
+
+    virtual bool doCheck(const Value &value)
+    {
+        // most of the time a check is done inside CheckItems::doCheck
+        if (!Check::m_data->m_flags.testFlag(CheckSharedData::HasItems)) { // items attribute is absent so do a check here
+            if (Check::m_data->m_flags.testFlag(CheckSharedData::NoAdditionalItems)) {
+                // items attribute is absent, but additionalItems is set to false
+                return false;
+            }
+            else if (Check::m_data->m_additionalSchema) {
+                bool ok;
+                ValueList array = value.toList(&ok);
+                if (!ok)
+                    return false;
+
+                typename ValueList::const_iterator i;
+                for (i = array.constBegin(); i != array.constEnd(); ++i) {
+                    if (!Check::m_data->m_additionalSchema->check(*i, Check::m_schema->m_callbacks)) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
 };
 
 // 5.7
@@ -1136,6 +1217,10 @@ typename SchemaPrivate<T>::Check *SchemaPrivate<T>::createCheckPoint(const Key &
     case QStaticStringHash<'i','t','e','m','s'>::Hash:
         if (QString::fromLatin1("items") == keyName)
             return new CheckItems(this, data, value);
+        break;
+    case QStaticStringHash<'a','d','d','i','t','i','o','n','a','l','i','t','e','m','s'>::Hash:
+        if (QString::fromLatin1("additionalitems") == keyName)
+            return new CheckAdditionalItems(this, data, value);
         break;
     case QStaticStringHash<'e','x','t','e','n','d','s'>::Hash:
         if (QString::fromLatin1("extends") == keyName)

@@ -160,12 +160,14 @@ class SchemaPrivate : public QSharedData
             NoFlags = 0x0,
             ExclusiveMinimum = 0x1,
             ExclusiveMaximum = 0x2,
-            NoAdditionalProperties = 0x4
+            NoAdditionalProperties = 0x4,
+            NoAdditionalItems = 0x8,
+            HasItems = 0x10
         };
         Q_DECLARE_FLAGS(Flags, Flag)
         Flags m_flags;
         QSharedPointer<Value> m_default; // keeps a default value
-        QSharedPointer< Schema<T> > m_additionalPropertySchema;
+        QSharedPointer< Schema<T> > m_additionalSchema;
     };
 
     class Check {
@@ -216,6 +218,8 @@ class SchemaPrivate : public QSharedData
     class CheckAdditionalProperties;
     // 5.5
     class CheckItems;
+    // 5.6
+    class CheckAdditionalItems;
     // 5.7
     class CheckRequired;
     // 5.9
