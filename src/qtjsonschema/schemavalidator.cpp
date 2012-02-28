@@ -250,7 +250,7 @@ QJsonObject SchemaValidator::_loadFromFolder(const QString & path, const QString
         // create a filter if required
         QStringList exts;
         if (!ext.isEmpty())
-            exts << QByteArray("*." + ext);
+            exts.append(QStringLiteral("*.")+QString::fromLatin1(ext));
 
         QStringList items(dir.entryList(exts, QDir::Files | QDir::Readable));
         foreach (QString filename, items)
@@ -277,7 +277,8 @@ QJsonObject SchemaValidator::_loadFromFolder(const QString & path, const QString
         {
             int nFailed = ret.count();
             ret.insert(SchemaError::kCodeStr, SchemaError::InvalidSchemaLoading);
-            ret.insert(SchemaError::kMessageStr, QString("Loading failed for %1 schemas. %2 schemas are loaded successfully.").arg(nFailed).arg(nLoaded));
+            ret.insert(SchemaError::kMessageStr,
+                       QString::fromLatin1("Loading failed for %1 schemas. %2 schemas are loaded successfully.").arg(nFailed).arg(nLoaded));
 
             if (nLoaded)
                 ret.insert(SchemaError::kCounterStr, nLoaded);
@@ -285,13 +286,13 @@ QJsonObject SchemaValidator::_loadFromFolder(const QString & path, const QString
         else if (!nLoaded) // no schemas were found
         {
             ret = makeError(SchemaError::InvalidSchemaLoading,
-                            QString("Folder '%1' does not contain any schema.").arg(dir.path()));
+                            QString::fromLatin1("Folder '%1' does not contain any schema.").arg(dir.path()));
         }
     }
     else
     {
         ret = makeError(SchemaError::InvalidSchemaFolder,
-                        QString("Folder '%1' does not exist.").arg(dir.path()));
+                        QString::fromLatin1("Folder '%1' does not exist.").arg(dir.path()));
     }
 
     if (!ret.isEmpty())
@@ -328,7 +329,7 @@ QJsonObject SchemaValidator::_loadFromFile(const QString &filename, SchemaNameIn
         else
         {   // file open error
             ret = makeError(SchemaError::FailedSchemaFileOpenRead,
-                            QString("Can't open/read '%1' schema file.").arg(schemaFile.fileName()));
+                            QString::fromLatin1("Can't open/read '%1' schema file.").arg(schemaFile.fileName()));
         }
 
         if (!ret.isEmpty())
@@ -376,7 +377,7 @@ QJsonObject SchemaValidator::_loadFromData(const QByteArray & json, const QStrin
     {
         // property containing schema name is absent
         return makeError(SchemaError::InvalidSchemaOperation,
-                            QString("name property '%1' must be present").arg(name));
+                            QString::fromLatin1("name property '%1' must be present").arg(name));
 
     }
 

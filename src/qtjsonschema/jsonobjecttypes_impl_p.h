@@ -379,7 +379,7 @@ inline void JsonObjectTypes::Service::setSubError(const QString &message, int er
     QJsonObject error;
     error.insert(SchemaError::kCodeStr, errorCode);
     error.insert(SchemaError::kMessageStr, message);
-    m_errorMap.insert(QString("%1").arg(m_errorMap.count()), error);
+    m_errorMap.insert(QString::number(m_errorMap.count()), error);
 }
 
 inline SchemaValidation::Schema<JsonObjectTypes> JsonObjectTypes::Service::loadSchema(const QString &schemaName)

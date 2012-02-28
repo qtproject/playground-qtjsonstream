@@ -153,7 +153,7 @@ AuthorizationRecord JsonUIDRangeAuthority::clientConnected(JsonStream *stream)
     if (!socket)
         return authRecord;
 
-    if (socket->socketDescriptor() == (quintptr)-1) {
+    if (socket->socketDescriptor() == (qintptr)-1) {
         qWarning() << Q_FUNC_INFO << "no socket descriptor available for connection" << socket;
         return authRecord;
     }

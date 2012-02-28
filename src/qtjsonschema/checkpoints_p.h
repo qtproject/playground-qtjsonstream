@@ -396,7 +396,7 @@ public:
             else { // looks like object or array
                 Object object;
                 foreach (Check *check, checks) {
-                    Value value("", Object());
+                    Value value(QStringLiteral(""), Object());
                     check->checkDefault(value, object);
                 }
 
@@ -482,7 +482,7 @@ public:
 
         bool bNoAdditional;
         if ((bNoAdditional = Check::m_data->m_flags.testFlag(CheckSharedData::NoAdditionalItems))) {
-            if (m_bList && array.count() > m_schema.size())
+            if (m_bList && array.count() > (uint) m_schema.size())
                 return false; // AdditionalItems is set to false
         }
 
@@ -1328,7 +1328,7 @@ void SchemaPrivate<T>::setLoadError(const char *message, const Value & value, in
 
     QString str;
     QDebug(&str) << value.value(); // put parameter value into the message
-    str = QString("Schema Error: %1 ( %2 )").arg(message).arg(str);
+    str = QString::fromLatin1("Schema Error: %1 ( %2 )").arg(message).arg(str);
     m_callbacks->setSubError(str, code);
 }
 

@@ -498,9 +498,9 @@ SchemaValidator *JsonServer::outboundValidator()
 */
 void JsonServer::initSchemaValidation()
 {
-    QByteArray szInboundPath(qgetenv("JSONSERVER_SCHEMA_INBOUND_PATH"));
-    QByteArray szOutboundPath(qgetenv("JSONSERVER_SCHEMA_OUTBOUND_PATH"));
-    QString strSchemaControl(qgetenv("JSONSERVER_SCHEMA_CONTROL")); // "warn","drop" or "warn":"drop"
+    QString szInboundPath = QString::fromLocal8Bit(qgetenv("JSONSERVER_SCHEMA_INBOUND_PATH"));
+    QString szOutboundPath = QString::fromLocal8Bit(qgetenv("JSONSERVER_SCHEMA_OUTBOUND_PATH"));
+    QString strSchemaControl = QString::fromLocal8Bit(qgetenv("JSONSERVER_SCHEMA_CONTROL")); // "warn","drop" or "warn":"drop"
 
     if (!strSchemaControl.isEmpty())
     {

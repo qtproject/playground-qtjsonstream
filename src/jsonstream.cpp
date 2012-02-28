@@ -198,7 +198,7 @@ void JsonStream::sendInternal(const QByteArray& byteArray)
 
     if (nBytes != byteArray.size())
         qCritical() << Q_FUNC_INFO << __LINE__
-                    << QString("Expected to write %1 bytes, actually %2.").arg(byteArray.size()).arg(nBytes);
+                    << QString::fromLatin1("Expected to write %1 bytes, actually %2.").arg(byteArray.size()).arg(nBytes);
 }
 
 /*!
