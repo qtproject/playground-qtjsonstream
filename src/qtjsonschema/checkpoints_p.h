@@ -48,7 +48,6 @@
 #include <QDebug>
 #include <QDate>
 #include <QUrl>
-#include <QColor>
 
 #include <math.h>
 
@@ -957,14 +956,6 @@ public:
             break;
         case QStaticStringHash<'r','e','g','e','x','p'>::Hash:
             if (QString::fromLatin1("regexp") == m_format) {
-            }
-            break;
-        case QStaticStringHash<'c','o','l','o','r'>::Hash:
-            if (QString::fromLatin1("color") == m_format) {
-                QString str;
-                if (!(str = value.toString(&ok)).isEmpty() && ok) {
-                    return QColor(str).isValid();
-                }
             }
             break;
         case QStaticStringHash<'u','r','i'>::Hash:

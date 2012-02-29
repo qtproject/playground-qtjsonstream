@@ -448,10 +448,6 @@ void tst_JsonSchema::testFormatValidation()
     // format=time
     QVERIFY(validate(QJsonValue(QString("12:34:56")), "{ \"format\" : \"time\" }"));
     QVERIFY(!validate(QJsonValue(QString("123456")), "{ \"format\" : \"time\" }"));
-    // format=color
-    QVERIFY(validate(QJsonValue(QString("#FF0F0F")), "{ \"format\" : \"color\" }"));
-    QVERIFY(validate(QJsonValue(QString("red")), "{ \"format\" : \"color\" }"));
-    QVERIFY(!validate(QJsonValue(QString("ZZFF0F0F")), "{ \"format\" : \"color\" }"));
     // format=url
     QVERIFY(validate(QJsonValue(QString("http://www.zzz.zu/zzz")), "{ \"format\" : \"url\" }"));
     // format=uri

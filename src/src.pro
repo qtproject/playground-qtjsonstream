@@ -10,6 +10,7 @@ VERSION = $$QT.jsonstream.VERSION
 DEFINES += QT_ADDON_JSONSTREAM_LIB
 
 QT += core network
+QT -= gui
 
 CONFIG += module create_prl
 MODULE_PRI = ../modules/qt_jsonstream.pri
