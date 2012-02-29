@@ -58,16 +58,16 @@ line to your .pro file.
 Conceptually, the JSON Stream classes are divided into a generic client (JsonClient),
 a generic server (JsonServer), a stream transport shared by the client and the server (JsonStream),
 and an optional authentication agent (JsonAuthority) which can be installed on the server.
-Each connection to the JsonServer is given a unique \i{identifier} so that the different
+Each connection to the JsonServer is given a unique \e{identifier} so that the different
 connections can be disambiguated.
 
 \image classes.png
 
 When a new socket connection is opened to the server, the authentication agent "absorbs" all
 communication over that socket until the connection has been properly authenticated.
-The authentication agent is also responsible for setting the \i{identifier} of the connection.
+The authentication agent is also responsible for setting the \e{identifier} of the connection.
 For example, an authentication agent that matches the process ID (PID) of the connecting
-client to an appropriate user and permission writes may set the \i{identifier} of the
+client to an appropriate user and permission writes may set the \e{identifier} of the
 connection to the Unix name of the UID of the connecting process.
 
 \section2 C++ API
