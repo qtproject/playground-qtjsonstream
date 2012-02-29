@@ -86,7 +86,7 @@ inline T SchemaManager<T,TT>::ensureCompiled(const QString &schemaName, MapSchem
     SchemaValidation::Schema<TT> schema(pair->second);
     if (schema.hasErrors())
     {
-        callbacks->setLoadError("Schema errors found. Schema can not be loaded properly.");
+        callbacks->setLoadError(QStringLiteral("Schema errors found. Schema can not be loaded properly."));
         return callbacks->error();
     }
     else if (!schema.isValid()) {

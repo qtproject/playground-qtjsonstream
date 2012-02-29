@@ -337,8 +337,7 @@ QJsonObject SchemaValidator::_loadFromFile(const QString &filename, SchemaNameIn
     }
     else
     {
-        ret = makeError(SchemaError::FailedSchemaFileOpenRead,
-                        "Filename is empty");
+        ret = makeError(SchemaError::FailedSchemaFileOpenRead, QStringLiteral("Filename is empty"));
     }
     return ret;
 }
@@ -358,8 +357,7 @@ QJsonObject SchemaValidator::_loadFromData(const QByteArray & json, const QStrin
 
     if (doc.isNull() || schemaObject.isEmpty())
     {
-        return makeError(SchemaError::InvalidObject,
-                            "schema data is invalid");
+        return makeError(SchemaError::InvalidObject, QStringLiteral("schema data is invalid"));
     }
 
     QJsonObject ret;
@@ -389,7 +387,7 @@ QJsonObject SchemaValidator::_loadFromData(const QByteArray & json, const QStrin
     {
         // no schema type
         ret = makeError(SchemaError::InvalidSchemaOperation,
-                            "schema name is missing");
+                        QStringLiteral("schema name is missing"));
     }
     return ret;
 }
@@ -512,13 +510,16 @@ SchemaValidator::SchemaUniqueKeyNameMatcher::~SchemaUniqueKeyNameMatcher()
 */
 void SchemaValidator::SchemaUniqueKeyNameMatcher::createIndex(const QString &schemaName, const QJsonObject & schema)
 {
-    if (schema.contains("properties")) {
-        QJsonValue props = schema["properties"];
+    if (schema.contains(QStringLiteral("properties"))) {
+        QJsonValue props = schema[QStringLiteral("properties")];
         if (props.isObject() && props.toObject().contains(m_key)) {
             QJsonObject o = props.toObject()[m_key].toObject();
-            if (o.contains("required") && o.contains("type") && o.contains("pattern")) {
-                if (true == o["required"].toBool() && o["type"].toString() == QLatin1String("string")) {
-                    QString key = o["pattern"].toString();
+            if (o.contains(QStringLiteral("required")) &&
+                o.contains(QStringLiteral("type")) &&
+                o.contains(QStringLiteral("pattern"))) {
+                if (true == o[QStringLiteral("required")].toBool() &&
+                    o[QStringLiteral("type")].toString() == QStringLiteral("string")) {
+                    QString key = o[QStringLiteral("pattern")].toString();
                     if (!key.isEmpty())
                     {
                         QHash<QString,QStringList>::iterator it(d_ptr->m_items.find(key));

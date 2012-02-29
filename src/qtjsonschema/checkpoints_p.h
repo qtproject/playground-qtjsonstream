@@ -742,7 +742,8 @@ public:
         bool ok;
         m_min = minimum.toInt(&ok);
         if (!ok) {
-            Check::m_schema->setLoadError("wrong 'minItems' value", minimum, SchemaError::SchemaWrongParamType);
+            Check::m_schema->setLoadError("wrong 'minItems' value", minimum,
+                                          SchemaError::SchemaWrongParamType);
         }
     }
 
@@ -766,7 +767,8 @@ public:
         bool ok;
         m_max = maximum.toInt(&ok);
         if (!ok) {
-            Check::m_schema->setLoadError("wrong 'maxItems' value", maximum, SchemaError::SchemaWrongParamType);
+            Check::m_schema->setLoadError("wrong 'maxItems' value", maximum,
+                                          SchemaError::SchemaWrongParamType);
         }
     }
 
@@ -934,7 +936,7 @@ public:
             if (QString::fromLatin1("date-time") == m_format) {
                 QString str;
                 if (!(str = value.toString(&ok)).isEmpty() && ok) {
-                    return QDateTime::fromString(str, "yyyy-MM-ddThh:mm:ssZ").isValid();
+                    return QDateTime::fromString(str, QStringLiteral("yyyy-MM-ddThh:mm:ssZ")).isValid();
                 }
             }
             break;
@@ -942,7 +944,7 @@ public:
             if (QString::fromLatin1("date") == m_format) {
                 QString str;
                 if (!(str = value.toString(&ok)).isEmpty() && ok) {
-                    return QDate::fromString(str, "yyyy-MM-dd").isValid();
+                    return QDate::fromString(str, QStringLiteral("yyyy-MM-dd")).isValid();
                 }
             }
             break;
@@ -950,7 +952,7 @@ public:
             if (QString::fromLatin1("time") == m_format) {
                 QString str;
                 if (!(str = value.toString(&ok)).isEmpty() && ok) {
-                    return QTime::fromString(str, "hh:mm:ss").isValid();
+                    return QTime::fromString(str, QStringLiteral("hh:mm:ss")).isValid();
                 }
             }
             break;
@@ -1319,7 +1321,7 @@ void SchemaPrivate<T>::setLoadError(const char *message, const Value & value, in
 
     QString str;
     QDebug(&str) << value.value(); // put parameter value into the message
-    str = QString::fromLatin1("Schema Error: %1 ( %2 )").arg(message).arg(str);
+    str = QString::fromLatin1("Schema Error: %1 ( %2 )").arg(QString::fromLatin1(message)).arg(str);
     m_callbacks->setSubError(str, code);
 }
 

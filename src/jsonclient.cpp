@@ -65,7 +65,7 @@ JsonClient::JsonClient(const QString& registration, QObject* parent)
     : QObject(parent),
       mStream(0)
 {
-    mRegistrationMessage.insert("token", registration);
+    mRegistrationMessage.insert(QStringLiteral("token"), registration);
 }
 
 /*!
