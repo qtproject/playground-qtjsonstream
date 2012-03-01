@@ -307,6 +307,16 @@ inline QJsonValue JsonObjectTypes::Value::value() const
     return QJsonValue();
 }
 
+/*!
+  Returns value in human-readable format for error reporting
+*/
+inline QString JsonObjectTypes::Value::data() const
+{
+    QString str;
+    QDebug(&str) << value();
+    return str;
+}
+
 inline const QJsonObject JsonObjectTypes::Value::map() const
 {
     Q_ASSERT(m_type == Map);

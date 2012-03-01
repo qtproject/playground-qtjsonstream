@@ -185,11 +185,10 @@ class SchemaPrivate : public QSharedData
         {
             bool result = doCheck(value);
             if (!result) {
-                bool ok;
                 // TODO it is tricky, as we do not have access to source code of this schema.
                 // maybe we can set "additional, hidden " source property in each schema property, or some nice hash?
                 m_schema->m_callbacks->setValidationError(QLatin1String("Schema validation error: ") +
-                                                QString::fromLatin1(m_errorMessage).arg(value.toString(&ok)));
+                                                          QString::fromLatin1(m_errorMessage).arg(value.data()));
             }
             return result;
         }

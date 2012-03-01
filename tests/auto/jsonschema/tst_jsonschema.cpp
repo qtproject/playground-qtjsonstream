@@ -122,6 +122,9 @@ void tst_JsonSchema::schemaTest()
     item.insert("create-test0", 1);
     item.insert("another-field", QLatin1String("uuid:{zxcvbnm}"));
 
+    result = validator.validateSchema("should_fail", item); // should fail - schema does not exist
+    QVERIFY(!result);
+
     result = validator.validateSchema("SchemaTestObject", item);
     //qDebug() << "VALID validation result: " << result;
     QVERIFY(result);

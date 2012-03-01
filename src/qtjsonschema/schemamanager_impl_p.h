@@ -103,10 +103,12 @@ inline T SchemaManager<T,TT>::ensureCompiled(const QString &schemaName, MapSchem
 template<class T, class TT>
 inline T SchemaManager<T,TT>::validate(const QString &schemaName, T object)
 {
-    if (!contains(schemaName))
-        return T();
-
     TypesService callbacks(this);
+    if (!contains(schemaName)) {
+        callbacks.setValidationError(QString::fromLatin1("Schema '%1' not found.").arg(schemaName));
+        return callbacks.error();
+    }
+
     MapSchemaPair schemaPair = m_schemas.value(schemaName);
     if (ensureCompiled(schemaName, &schemaPair, &callbacks).isEmpty()) {
         // schema compiled successfully can validate an object

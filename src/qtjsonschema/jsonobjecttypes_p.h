@@ -129,6 +129,7 @@ public:
 
         inline bool compare(const Value &) const;
         inline QJsonValue value() const;
+        inline QString data() const; // human-readable format
 
     private:
         inline const QJsonObject map() const;
