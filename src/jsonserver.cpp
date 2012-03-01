@@ -261,7 +261,7 @@ void JsonServer::receiveMessage(const QString &identifier, const QJsonObject &me
         if (!m_inboundValidator->validateSchema(message))
         {
             if (validatorFlags().testFlag(WarnIfInvalid)) {
-                emit inboundMessageValidationFailed(message);
+                emit inboundMessageValidationFailed(message, m_inboundValidator->getLastError());
             }
             if (validatorFlags().testFlag(DropIfInvalid)) {
                 return;
@@ -373,7 +373,7 @@ bool JsonServer::send(const QString &identifier, const QJsonObject &message)
         if (!m_outboundValidator->validateSchema(message))
         {
             if (validatorFlags().testFlag(WarnIfInvalid)) {
-                emit outboundMessageValidationFailed(message);
+                emit outboundMessageValidationFailed(message, m_outboundValidator->getLastError());
             }
             if (validatorFlags().testFlag(DropIfInvalid)) {
                 return false;
@@ -407,7 +407,7 @@ void JsonServer::broadcast(const QJsonObject &message)
         if (!m_outboundValidator->validateSchema(message))
         {
             if (validatorFlags().testFlag(WarnIfInvalid)) {
-                emit outboundMessageValidationFailed(message);
+                emit outboundMessageValidationFailed(message, m_outboundValidator->getLastError());
             }
             if (validatorFlags().testFlag(DropIfInvalid)) {
                 return;
@@ -555,13 +555,15 @@ void JsonServer::initSchemaValidation()
 */
 
 /*!
-    \fn void JsonServer::inboundMessageValidationFailed(const QJsonObject &message)
-    This signal is emitted when an inbound \a message message fails a JSON schema validation.
+    \fn void JsonServer::inboundMessageValidationFailed(const QJsonObject &message, const QtAddOn::JsonStream::SchemaError &error)
+    This signal is emitted when an inbound \a message message fails a JSON schema validation.  The validation
+    error is reported in \a error.
 */
 
 /*!
-    \fn void JsonServer::outboundMessageValidationFailed(const QJsonObject &message)
-    This signal is emitted when an outbound \a message message fails a JSON schema validation.
+    \fn void JsonServer::outboundMessageValidationFailed(const QJsonObject &message, const QtAddOn::JsonStream::SchemaError &error)
+    This signal is emitted when an outbound \a message message fails a JSON schema validation.  The validation
+    error is reported in \a error.
 */
 
 #include "moc_jsonserver.cpp"

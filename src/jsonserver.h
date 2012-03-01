@@ -50,6 +50,7 @@
 class QLocalServer;
 
 #include "jsonstream-global.h"
+#include "schemaerror.h"
 
 QT_BEGIN_NAMESPACE_JSONSTREAM
 
@@ -107,8 +108,8 @@ signals:
     void messageReceived(const QString &identifier, const QJsonObject &message);
     void authorizationFailed();
 
-    void inboundMessageValidationFailed(const QJsonObject &message);
-    void outboundMessageValidationFailed(const QJsonObject &message);
+    void inboundMessageValidationFailed(const QJsonObject &message, const QtAddOn::JsonStream::SchemaError &error);
+    void outboundMessageValidationFailed(const QJsonObject &message, const QtAddOn::JsonStream::SchemaError &error);
 
 protected slots:
     virtual void handleClientAuthorized(const QString &identifier);

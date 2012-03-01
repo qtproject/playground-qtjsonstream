@@ -85,6 +85,8 @@ public:
     static const QString kErrorPrefixStr;
 
 private:
+    friend Q_ADDON_JSONSTREAM_EXPORT QDebug operator<<(QDebug, const SchemaError &);
+
     QJsonObject m_data;
 };
 

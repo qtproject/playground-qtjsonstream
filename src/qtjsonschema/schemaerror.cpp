@@ -42,6 +42,7 @@
 #include "schemaerror.h"
 
 #include <QStringList>
+#include <QDebug>
 
 QT_BEGIN_NAMESPACE_JSONSTREAM
 
@@ -122,6 +123,12 @@ QList<SchemaError> SchemaError::subErrors() const
     }
 
     return errors;
+}
+
+QDebug operator <<(QDebug dbg, const SchemaError &e)
+{
+    dbg << "SchemaError(" << e.m_data << ")";
+    return dbg;
 }
 
 QT_END_NAMESPACE_JSONSTREAM
