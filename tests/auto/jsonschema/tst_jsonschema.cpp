@@ -203,6 +203,8 @@ void tst_JsonSchema::testAdditionalPropertiesValidation()
                      "{ \"properties\" : { \"a\" : {}, \"b\" : {} }, \"additionalProperties\" : true }"));
     QVERIFY(validate("{ \"a\" : 1, \"b\" : 2, \"c\" : 3 }",
                      "{ \"properties\" : { \"a\" : {}, \"b\" : {}, \"c\" : {} }, \"additionalProperties\" : false }"));
+    QVERIFY(validate("{ \"a\" : 1, \"b\" : 2 }",  // a property 'c' is missing - still valid
+                     "{ \"properties\" : { \"a\" : {}, \"b\" : {}, \"c\" : {} }, \"additionalProperties\" : false }"));
     QVERIFY(validate("{ \"a\" : 1, \"b\" : 2, \"c\" : 3 }",
                      "{ \"additionalProperties\" : { \"type\" : \"number\"  } }"));
     QVERIFY(validate("{ \"a\" : 1, \"b\" : 2, \"c\" : 3 }",

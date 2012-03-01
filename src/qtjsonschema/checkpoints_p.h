@@ -313,20 +313,12 @@ public:
             return false;
 
         if (Check::m_data->m_flags.testFlag(CheckSharedData::NoAdditionalProperties)) {
-            QList<Key> strsSchemaProperties(m_checks.keys());
             QList<Key> strsObjectProperties(object.propertyNames());
-            if (strsSchemaProperties.size() == strsObjectProperties.size()) {
-                // number of properties are the same but lists still may differ
-                qSort(strsSchemaProperties);
-                qSort(strsObjectProperties);
-                if (!qEqual(strsSchemaProperties.constBegin(), strsSchemaProperties.constEnd(), strsObjectProperties.constBegin())) {
-                    // lists of properties differ - return an additionalProperties error
+            foreach (const Key &key, strsObjectProperties) {
+                if (!m_checks.contains(key)) {
+                    // no additional properties allowed
                     return false;
                 }
-            }
-            else {
-                // number of properties differ - return an additionalProperties error
-                return false;
             }
         }
 
