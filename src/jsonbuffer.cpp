@@ -83,7 +83,8 @@ JsonBuffer::JsonBuffer(QObject *parent)
 
 void JsonBuffer::append(const QByteArray& data)
 {
-    append(data.data(), data.size());
+    mBuffer.append(data.data(), data.size());
+    processMessages();
 }
 
 /*!
@@ -95,7 +96,48 @@ void JsonBuffer::append(const QByteArray& data)
 void JsonBuffer::append(const char *data, int len)
 {
     mBuffer.append(data, len);
+    processMessages();
+}
 
+/*!
+  Copy data from a file descriptor \a fd into the buffer.
+  This function tries to eliminate extra data copy operations.
+  It assumes that the file descriptor is ready to read and
+  it does not try to read all of the data.
+
+  Returns the number of bytes read or -1 for an error condition.
+ */
+
+int JsonBuffer::copyFromFd(int fd)
+{
+    const int maxcopy = 1024;
+    uint oldSize = mBuffer.size();
+    mBuffer.resize(oldSize + maxcopy);
+    int n = ::read(fd, mBuffer.data()+oldSize, maxcopy);
+    if (n > 0) {
+        mBuffer.resize(oldSize+n);
+        processMessages();
+    }
+    else
+        mBuffer.resize(oldSize);
+    return n;
+}
+
+/*!
+    Clear the contents of the buffer.
+ */
+
+void JsonBuffer::clear()
+{
+    mBuffer.clear();
+}
+
+/*!
+  \internal
+*/
+
+void JsonBuffer::processMessages()
+{
     if (mFormat == FormatUndefined && mBuffer.size() >= 4) {
         if (strncmp("bson", mBuffer.data(), 4) == 0)
             mFormat = FormatBSON;

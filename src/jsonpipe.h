@@ -39,46 +39,67 @@
 **
 ****************************************************************************/
 
-#ifndef _JSON_BUFFER_H
-#define _JSON_BUFFER_H
+#ifndef _JSON_PIPE_H
+#define _JSON_PIPE_H
 
-#include <QObject>
-#include <QByteArray>
+#include <QVariant>
 #include <QJsonObject>
-
+#include <QJsonDocument>
 #include "jsonstream-global.h"
+
+class QSocketNotifier;
 
 QT_BEGIN_NAMESPACE_JSONSTREAM
 
-class JsonBuffer : public QObject
+class JsonBuffer;
+
+class Q_ADDON_JSONSTREAM_EXPORT JsonPipe : public QObject
 {
     Q_OBJECT
 public:
-    JsonBuffer(QObject *parent=0);
-    void append(const QByteArray& data);
-    void append(const char* data, int len);
-    int  copyFromFd(int fd);
-    void clear();
+    JsonPipe(QObject *parent = 0);
+    virtual ~JsonPipe();
 
-    EncodingFormat  format() const;
+    bool writeEnabled() const;
+    bool readEnabled() const;
+
+    Q_INVOKABLE bool send(const QJsonObject& message);
+
+    EncodingFormat format() const;
+    void           setFormat(EncodingFormat format);
+
+    void setFds(int in_fd, int out_fd);
+
+    enum PipeError { WriteFailed, WriteAtEnd, ReadFailed, ReadAtEnd };
+    Q_ENUMS(PipeError);
+
+    bool waitForBytesWritten(int msecs = 30000);
 
 signals:
+    void messageReceived(const QJsonObject& message);
+    void error(PipeError);
+
+protected slots:
     void objectReceived(const QJsonObject& object);
+    void inReady(int fd);
+    void outReady(int fd);
+
+protected:
+    void sendInternal(const QByteArray& byteArray);
 
 private:
-    void processMessages();
+    int writeInternal(int fd);
 
 private:
-    enum UTF8ParsingState { ParseNormal, ParseInString, ParseInBackslash };
-
+    JsonBuffer      *mInBuffer;
+    QByteArray       mOutBuffer;
+    QSocketNotifier *mIn;
+    QSocketNotifier *mOut;
     EncodingFormat   mFormat;
-    QByteArray       mBuffer;
-    UTF8ParsingState mParserState;
-    int              mParserDepth;
-    int              mParserOffset;
-    int              mParserStartOffset;
 };
+
+JsonPipe& operator<<( JsonPipe&, const QJsonObject& );
 
 QT_END_NAMESPACE_JSONSTREAM
 
-#endif  // _JSON_BUFFER_H
+#endif  // _JSON_PIPE_H

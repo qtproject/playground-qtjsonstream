@@ -54,6 +54,7 @@ PUBLIC_HEADERS += \
     $$PWD/jsonserver.h \
     $$PWD/jsonstream-global.h \
     $$PWD/jsonserverclient.h \
+    $$PWD/jsonpipe.h \
     $$SCHEMA_PUBLIC_HEADERS
 
 HEADERS += \
@@ -74,6 +75,7 @@ SOURCES += \
     $$PWD/jsonuidrangeauthority.cpp \
     $$PWD/jsonserverclient.cpp \
     $$PWD/jsonserver.cpp \
+    $$PWD/jsonpipe.cpp \
     $$SCHEMA_SOURCES
 
 mac:QMAKE_FRAMEWORK_BUNDLE_NAME = $$QT.jsonstream.name

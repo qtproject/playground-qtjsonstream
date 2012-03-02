@@ -44,6 +44,7 @@
 #include <QLocalServer>
 #include "jsonserver.h"
 #include "jsonstream.h"
+#include "jsonpipe.h"
 #include "jsonuidauthority.h"
 #include "jsonuidrangeauthority.h"
 #include "schemavalidator.h"
@@ -249,11 +250,15 @@ private slots:
     void authRangeFail();
     void formatTest();
     void schemaTest();
+    void pipeTest();
+    void pipeFormatTest();
+    void pipeWaitTest();
 };
 
 void tst_JsonStream::initTestCase()
 {
     qRegisterMetaType<QJsonObject>();
+    qRegisterMetaType<JsonPipe::PipeError>("PipeError");
 }
 
 
@@ -453,6 +458,114 @@ void tst_JsonStream::schemaTest()
 
     spy.waitRemoved();
     child.waitForFinished();
+}
+
+void waitForSpy(QSignalSpy& spy, int count, int timeout=5000) {
+    QTime stopWatch;
+    stopWatch.restart();
+    forever {
+        if (spy.count() == count)
+            break;
+        QTestEventLoop::instance().enterLoop(1);
+        if (stopWatch.elapsed() >= timeout)
+            QFAIL("Timed out");
+    }
+}
+
+
+class Pipes {
+public:
+    Pipes() {
+        ::pipe(fd1);
+        ::pipe(fd2);
+    }
+    ~Pipes() {
+        ::close(fd1[0]);
+        ::close(fd1[1]);
+        ::close(fd2[0]);
+        ::close(fd2[1]);
+    }
+    void join(JsonPipe& jp1, JsonPipe& jp2) {
+        // fd1[0] = Read end of jp1    fd1[1] = Write end of jp2
+        // fd2[0] = Read end of jp2    fd2[1] = Write end of jp1
+        jp1.setFds(fd1[0], fd2[1]);
+        jp2.setFds(fd2[0], fd1[1]);
+    }
+    int fd1[2], fd2[2];
+};
+
+class PipeSpy {
+public:
+    PipeSpy(JsonPipe& jp)
+        : msg(&jp, SIGNAL(messageReceived(const QJsonObject&)))
+        , err(&jp, SIGNAL(error(PipeError))) {}
+    QJsonObject at(int i) { return qvariant_cast<QJsonObject>(msg.at(i).at(0)); }
+    QJsonObject last()    { return qvariant_cast<QJsonObject>(msg.last().at(0)); }
+    QSignalSpy msg, err;
+};
+
+void tst_JsonStream::pipeTest()
+{
+    Pipes pipes;
+    JsonPipe jpipe1, jpipe2;
+
+    QVERIFY(!jpipe1.writeEnabled());
+    QVERIFY(!jpipe1.readEnabled());
+    QVERIFY(!jpipe2.writeEnabled());
+    QVERIFY(!jpipe2.readEnabled());
+
+    pipes.join(jpipe1, jpipe2);
+
+    QVERIFY(jpipe1.writeEnabled());
+    QVERIFY(jpipe1.readEnabled());
+    QVERIFY(jpipe2.writeEnabled());
+    QVERIFY(jpipe2.readEnabled());
+
+    PipeSpy spy1(jpipe1);
+    PipeSpy spy2(jpipe2);
+
+    QJsonObject msg;
+    msg.insert("name", QStringLiteral("Fred"));
+    QVERIFY(jpipe1.send(msg));
+    waitForSpy(spy2.msg, 1);
+    QCOMPARE(spy2.at(0).value("name").toString(), QStringLiteral("Fred"));
+}
+
+void tst_JsonStream::pipeFormatTest()
+{
+    QList<EncodingFormat> formats = QList<EncodingFormat>() << FormatUTF8 << FormatBSON << FormatQBJS;
+
+    foreach (EncodingFormat format, formats) {
+        Pipes pipes;
+        JsonPipe jpipe1, jpipe2;
+        pipes.join(jpipe1, jpipe2);
+        PipeSpy spy(jpipe2);
+        jpipe1.setFormat(format);
+        QCOMPARE(jpipe1.format(), format);
+
+        QJsonObject msg;
+        msg.insert("name", QStringLiteral("Fred"));
+        QVERIFY(jpipe1.send(msg));
+        waitForSpy(spy.msg, 1);
+        QCOMPARE(spy.at(0).value("name").toString(), QStringLiteral("Fred"));
+        QCOMPARE(jpipe2.format(), format);
+    }
+}
+
+void tst_JsonStream::pipeWaitTest()
+{
+    Pipes pipes;
+    JsonPipe jpipe1, jpipe2;
+    pipes.join(jpipe1, jpipe2);
+
+    QJsonObject msg;
+    msg.insert("name", QStringLiteral("Jabberwocky"));
+    QVERIFY(jpipe1.send(msg));
+    QVERIFY(jpipe1.waitForBytesWritten());   // Actually push it out
+
+    ::close(pipes.fd2[1]);  // Close the write end of jp1
+    QVERIFY(jpipe1.send(msg));
+    QVERIFY(!jpipe1.waitForBytesWritten());
 }
 
 QTEST_MAIN(tst_JsonStream)
