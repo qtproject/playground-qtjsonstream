@@ -164,6 +164,9 @@ public:
         inline Service(SchemaManagerBase *schemas);
         inline QJsonObject error() const;
 
+        void setRootSchema(const SchemaValidation::Schema<JsonObjectTypes> & _schema) { m_rootSchema = _schema; }
+        const SchemaValidation::Schema<JsonObjectTypes> &rootSchema() const { return m_rootSchema; }
+
         // interface
         inline void setValidationError(const QString &message);
         inline void setLoadError(const QString &message);
@@ -173,6 +176,7 @@ public:
     private:
         SchemaManagerBase *m_schemas;
         QJsonObject m_errorMap;
+        SchemaValidation::Schema<JsonObjectTypes> m_rootSchema;
     };
 };
 

@@ -496,6 +496,10 @@ void tst_JsonSchema::testExtendsValidation()
 // 5.28
 void tst_JsonSchema::testRefValidation()
 {
+    //
+    QVERIFY(validate("{ \"a\" : {} }", "{ \"type\" : \"object\", \"additionalProperties\" : { \"$ref\" : \"#\" } }"));
+    QVERIFY(!validate("{ \"a\" : 1 }", "{ \"type\" : \"object\", \"additionalProperties\" : { \"$ref\" : \"#\" } }"));
+    QVERIFY(!validate("{ \"a\" : \"1\" }", "{ \"type\" : \"object\", \"additionalProperties\" : { \"$ref\" : \"#\" } }"));
 }
 
 bool tst_JsonSchema::validate(const char *data, const QByteArray & schemaBody)

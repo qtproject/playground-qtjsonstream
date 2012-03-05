@@ -118,6 +118,7 @@ class SchemaPrivate<T>::CheckType : public Check {
                ArrayType = 0x0020,
                NullType = 0x0040,
                AnyType = 0x0080,
+               SelfRefType = 0x0100, // self reference
                UnknownType = 0};
 public:
     CheckType(SchemaPrivate *schema, QSharedPointer<CheckSharedData> &data, const Value& type)
@@ -136,6 +137,15 @@ public:
                 typeName = Value(*i).toString(&ok);
                 if (ok) {
                     typesName << typeName;
+                }
+                else {
+                    // is a self reference ?
+                    const Object obj = (*i).toObject(&ok);
+                    const QLatin1String ref("$ref");
+                    if (ok && obj.propertyNames().contains(ref) && obj.property(ref).toString(&ok) == QStringLiteral("#") && ok) {
+                        m_type |= ObjectType;
+                        m_type |= SelfRefType;
+                    }
                 }
             }
         } else {
@@ -292,6 +302,7 @@ public:
             }
             m_checks.insert(propertyName, checks);
         }
+        Check::m_data->m_flags |= CheckSharedData::HasProperties;
     }
 
     ~CheckProperties()
@@ -424,9 +435,35 @@ public:
         Q_ASSERT(ok);
     }
 
-    virtual bool doCheck(const Value &)
+    virtual bool doCheck(const Value &value)
     {
-        // actual check is done in CheckAdditionalProperties::doCheck
+        // most time a check is done in CheckProperties::doCheck
+        QFlags<enum CheckSharedData::Flag> flags(Check::m_data->m_flags);
+        if (!flags.testFlag(CheckSharedData::HasProperties) && !flags.testFlag(CheckSharedData::HasItems)) {
+            bool ok;
+            ValueList array(value.toList(&ok));
+            if (ok) {
+                // arrays are still allowed
+                return true;
+            }
+            if (flags.testFlag(CheckSharedData::NoAdditionalProperties)) {
+                // items attribute is absent, but additionalItems is set to false
+                return false;
+            }
+            else if (Check::m_data->m_additionalSchema) {
+                Object object = value.toObject(&ok);
+                if (!ok)
+                    return false;
+
+                foreach (const Key &key, object.propertyNames()) {
+                    Value property = object.property(key);
+                    if (!Check::m_data->m_additionalSchema->check(property, Check::m_schema->m_callbacks)) {
+                        return false;
+                    }
+                }
+
+            }
+        }
         return true;
     }
 };
@@ -469,7 +506,14 @@ public:
         bool ok;
         ValueList array = value.toList(&ok);
         if (!ok)
+        {
+            Object object = value.toObject(&ok);
+            if (ok && m_schema.size() >= 1) {
+                bool bRet = m_schema[0].check(value, Check::m_schema->m_callbacks);
+                return bRet;
+            }
             return false;
+        }
 
         bool bNoAdditional;
         if ((bNoAdditional = Check::m_data->m_flags.testFlag(CheckSharedData::NoAdditionalItems))) {
@@ -1102,13 +1146,19 @@ public:
         QString schemaName = value.toString(&ok);
         Q_ASSERT(ok);
 
-        m_newSchema = schema->m_callbacks->loadSchema(schemaName);
-        if (!m_newSchema.isValid()) {
-            // FIXME should we have current schema name?
-            const QString msg =  QString::fromLatin1("Schema extends %1 but it is unknown.")
-                    .arg(schemaName);
-            qWarning() << msg;
-            schema->m_callbacks->setValidationError(msg);
+        if (schemaName == QStringLiteral("#")) { // self reference
+            // assign a root schema
+            m_newSchema = Check::m_schema->m_callbacks->rootSchema();
+        }
+        else {
+            m_newSchema = schema->m_callbacks->loadSchema(schemaName);
+            if (!m_newSchema.isValid()) {
+                // FIXME should we have current schema name?
+                const QString msg =  QString::fromLatin1("Schema extends %1 but it is unknown.")
+                        .arg(schemaName);
+                qWarning() << msg;
+                schema->m_callbacks->setValidationError(msg);
+            }
         }
     }
     virtual bool doCheck(const Value &value)
@@ -1121,7 +1171,6 @@ public:
     void checkDefault(Value& value, Object &_object) const
     {
         m_newSchema.checkDefault(value, _object);
-
     }
 
 private:
@@ -1269,11 +1318,16 @@ bool SchemaPrivate<T>::check(const Value &value, Service *callbackToUseForCheck)
 {
     //qDebug() << Q_FUNC_INFO << m_checks.count() << this;
     Q_ASSERT(callbackToUseForCheck);
-    Q_ASSERT(!m_callbacks);
+
+    // allow recursive calls - save mutable variables
+    Service *savedCallback = m_callbacks;
+    qint32 savedRequiredCount = m_requiredCount;
 
     m_callbacks = callbackToUseForCheck;
     bool result = check(value);
-    m_callbacks = 0;
+    // restore saved variables
+    m_callbacks = savedCallback;
+    m_requiredCount = savedRequiredCount;
     return result;
 }
 

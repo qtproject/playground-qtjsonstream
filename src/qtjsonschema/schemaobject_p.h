@@ -120,10 +120,23 @@ public:
         : d_ptr(new SchemaPrivate<T>())
     {}
 
+protected:
     Schema(const Object& schema, Service *callbacksToUseForCompilation)
         : d_ptr(new SchemaPrivate<T>())
     {
         d_ptr->compile(schema, callbacksToUseForCompilation);
+    }
+
+public:
+    static Schema compile(const Object& schemaObj, Service *callbacksToUseForCompilation)
+    {
+        Schema schema;
+        if (callbacksToUseForCompilation) {
+            // need to store a root schema to use for self reference
+            callbacksToUseForCompilation->setRootSchema(schema);
+        }
+        schema.d_ptr->compile(schemaObj, callbacksToUseForCompilation);
+        return schema;
     }
 
     bool isValid() const
@@ -162,7 +175,8 @@ class SchemaPrivate : public QSharedData
             ExclusiveMaximum = 0x2,
             NoAdditionalProperties = 0x4,
             NoAdditionalItems = 0x8,
-            HasItems = 0x10
+            HasItems = 0x10,
+            HasProperties = 0x20
         };
         Q_DECLARE_FLAGS(Flags, Flag)
         Flags m_flags;

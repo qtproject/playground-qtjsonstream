@@ -92,7 +92,7 @@ inline T SchemaManager<T,TT>::ensureCompiled(const QString &schemaName, MapSchem
     else if (!schema.isValid()) {
         // Try to compile schema
         typename TT::Object schemaObject(pair->first);
-        SchemaValidation::Schema<TT> compiledSchema(schemaObject, callbacks);
+        SchemaValidation::Schema<TT> compiledSchema = SchemaValidation::Schema<TT>::compile(schemaObject, callbacks);
         pair->second = compiledSchema;
         m_schemas.insert(schemaName, *pair);
         return callbacks->error();
