@@ -59,6 +59,26 @@ QT_BEGIN_NAMESPACE_JSONSTREAM
 /****************************************************************************/
 
 /*!
+  \internal
+*/
+class JsonPipePrivate
+{
+public:
+    JsonPipePrivate()
+        : mIn(0)
+        , mOut(0)
+        , mFormat(FormatUndefined) {}
+
+    JsonBuffer      *mInBuffer;
+    QByteArray       mOutBuffer;
+    QSocketNotifier *mIn;
+    QSocketNotifier *mOut;
+    EncodingFormat   mFormat;
+};
+
+/****************************************************************************/
+
+/*!
     \class JsonPipe
     \brief The JsonPipe class serializes JSON data.
 
@@ -73,12 +93,11 @@ QT_BEGIN_NAMESPACE_JSONSTREAM
 
 JsonPipe::JsonPipe(QObject *parent)
     : QObject(parent)
-    , mIn(0)
-    , mOut(0)
-    , mFormat(FormatUndefined)
+    , d_ptr(new JsonPipePrivate())
 {
-    mInBuffer = new JsonBuffer(this);
-    connect(mInBuffer, SIGNAL(objectReceived(const QJsonObject&)),
+    Q_D(JsonPipe);
+    d->mInBuffer = new JsonBuffer(this);
+    connect(d->mInBuffer, SIGNAL(objectReceived(const QJsonObject&)),
             SLOT(objectReceived(const QJsonObject&)));
 }
 
@@ -96,7 +115,8 @@ JsonPipe::~JsonPipe()
 
 bool JsonPipe::writeEnabled() const
 {
-    return (mOut != NULL);
+    Q_D(const JsonPipe);
+    return (d->mOut != NULL);
 }
 
 /*!
@@ -105,7 +125,8 @@ bool JsonPipe::writeEnabled() const
 
 bool JsonPipe::readEnabled() const
 {
-    return (mIn != NULL);
+    Q_D(const JsonPipe);
+    return (d->mIn != NULL);
 }
 
 /*!
@@ -114,31 +135,33 @@ bool JsonPipe::readEnabled() const
 
 void JsonPipe::setFds(int in_fd, int out_fd)
 {
-    if (mIn)
-        delete mIn;
-    if (mOut)
-        delete mOut;
+    Q_D(JsonPipe);
+    if (d->mIn)
+        delete d->mIn;
+    if (d->mOut)
+        delete d->mOut;
 
-    mIn = new QSocketNotifier(in_fd, QSocketNotifier::Read, this);
-    mOut = new QSocketNotifier(out_fd, QSocketNotifier::Write, this);
-    connect(mIn, SIGNAL(activated(int)), SLOT(inReady(int)));
-    connect(mOut, SIGNAL(activated(int)), SLOT(outReady(int)));
-    mIn->setEnabled(true);
-    mOut->setEnabled(mOutBuffer.size() > 0);
+    d->mIn = new QSocketNotifier(in_fd, QSocketNotifier::Read, this);
+    d->mOut = new QSocketNotifier(out_fd, QSocketNotifier::Write, this);
+    connect(d->mIn, SIGNAL(activated(int)), SLOT(inReady(int)));
+    connect(d->mOut, SIGNAL(activated(int)), SLOT(outReady(int)));
+    d->mIn->setEnabled(true);
+    d->mOut->setEnabled(d->mOutBuffer.size() > 0);
 }
 
 void JsonPipe::inReady(int fd)
 {
-    mIn->setEnabled(false);
-    int n = mInBuffer->copyFromFd(fd);
+    Q_D(JsonPipe);
+    d->mIn->setEnabled(false);
+    int n = d->mInBuffer->copyFromFd(fd);
     if (n <= 0) {
-        mInBuffer->clear();
-        mIn->deleteLater();
-        mIn = NULL;
+        d->mInBuffer->clear();
+        d->mIn->deleteLater();
+        d->mIn = NULL;
         emit error( (n < 0) ? ReadFailed : ReadAtEnd );
     }
     else
-        mIn->setEnabled(true);
+        d->mIn->setEnabled(true);
 }
 
 /*!
@@ -148,32 +171,34 @@ void JsonPipe::inReady(int fd)
  */
 int JsonPipe::writeInternal(int fd)
 {
-    if (!mOutBuffer.size())
+    Q_D(JsonPipe);
+    if (!d->mOutBuffer.size())
         return 0;
 
-    int n = ::write(fd, mOutBuffer.data(), mOutBuffer.size());
+    int n = ::write(fd, d->mOutBuffer.data(), d->mOutBuffer.size());
     if (n <= 0) {
-        mOut->deleteLater();
-        mOut = NULL;
+        d->mOut->deleteLater();
+        d->mOut = NULL;
         // ### TODO: This emits errors in the middle of waitForBytesWritten.
         // ### This could cause problems 'cause it gets called in destructors
         emit error(n < 0 ? WriteFailed : WriteAtEnd);
     }
-    else if (n < mOutBuffer.size())
-        mOutBuffer = mOutBuffer.mid(n);
+    else if (n < d->mOutBuffer.size())
+        d->mOutBuffer = d->mOutBuffer.mid(n);
     else
-        mOutBuffer.clear();
+        d->mOutBuffer.clear();
     return n;
 }
 
 void JsonPipe::outReady(int)
 {
-    Q_ASSERT(mOut);
-    mOut->setEnabled(false);
-    if (mOutBuffer.size()) {
-        writeInternal(mOut->socket());
-        if (mOut && !mOutBuffer.isEmpty())
-            mOut->setEnabled(true);
+    Q_D(JsonPipe);
+    Q_ASSERT(d->mOut);
+    d->mOut->setEnabled(false);
+    if (d->mOutBuffer.size()) {
+        writeInternal(d->mOut->socket());
+        if (d->mOut && !d->mOutBuffer.isEmpty())
+            d->mOut->setEnabled(true);
     }
 }
 
@@ -183,31 +208,32 @@ void JsonPipe::outReady(int)
 
 bool JsonPipe::send(const QJsonObject& object)
 {
-    if (!mOut)
+    Q_D(JsonPipe);
+    if (!d->mOut)
         return false;
 
     QJsonDocument document(object);
 
-    switch (mFormat) {
+    switch (d->mFormat) {
     case FormatUndefined:
-        mFormat = FormatQBJS;
+        d->mFormat = FormatQBJS;
         // Deliberate fall through
     case FormatQBJS:
-        mOutBuffer.append(document.toBinaryData());
+        d->mOutBuffer.append(document.toBinaryData());
         break;
     case FormatUTF8:
-        mOutBuffer.append(document.toJson());
+        d->mOutBuffer.append(document.toJson());
         break;
     case FormatBSON:
     {
         BsonObject bson(document.toVariant().toMap());
-        mOutBuffer.append("bson");
-        mOutBuffer.append(bson.data());
+        d->mOutBuffer.append("bson");
+        d->mOutBuffer.append(bson.data());
         break;
     }
     }
-    if (mOutBuffer.size())
-        mOut->setEnabled(true);
+    if (d->mOutBuffer.size())
+        d->mOut->setEnabled(true);
     return true;
 }
 
@@ -218,8 +244,9 @@ bool JsonPipe::send(const QJsonObject& object)
 
 void JsonPipe::objectReceived(const QJsonObject& object)
 {
-    if (mFormat == FormatUndefined)
-        mFormat = mInBuffer->format();
+    Q_D(JsonPipe);
+    if (d->mFormat == FormatUndefined)
+        d->mFormat = d->mInBuffer->format();
     emit messageReceived(object);
 }
 
@@ -229,7 +256,8 @@ void JsonPipe::objectReceived(const QJsonObject& object)
 
 EncodingFormat JsonPipe::format() const
 {
-    return mFormat;
+    Q_D(const JsonPipe);
+    return d->mFormat;
 }
 
 /*!
@@ -238,7 +266,8 @@ EncodingFormat JsonPipe::format() const
 
 void JsonPipe::setFormat( EncodingFormat format )
 {
-    mFormat = format;
+    Q_D(JsonPipe);
+    d->mFormat = format;
 }
 
 /*
@@ -249,18 +278,19 @@ void JsonPipe::setFormat( EncodingFormat format )
 
 bool JsonPipe::waitForBytesWritten(int msecs)
 {
-    if (!mOut || mOutBuffer.isEmpty())
+    Q_D(JsonPipe);
+    if (!d->mOut || d->mOutBuffer.isEmpty())
         return false;
 
-    mOut->setEnabled(false);
+    d->mOut->setEnabled(false);
 
     QElapsedTimer stopWatch;
     stopWatch.start();
 
-    while (mOut && !mOutBuffer.isEmpty()) {
+    while (d->mOut && !d->mOutBuffer.isEmpty()) {
         fd_set wfds;
         FD_ZERO(&wfds);
-        FD_SET(mOut->socket(),&wfds);
+        FD_SET(d->mOut->socket(),&wfds);
 
         int timeout = msecs - stopWatch.elapsed();
         struct timeval tv;
@@ -270,17 +300,17 @@ bool JsonPipe::waitForBytesWritten(int msecs)
             tv.tv_usec = (timeout % 1000) * 1000;
         }
 
-        int retval = ::select(mOut->socket() + 1, NULL, &wfds, NULL, tvptr);
+        int retval = ::select(d->mOut->socket() + 1, NULL, &wfds, NULL, tvptr);
         if (retval == -1 && errno == EINTR)
             continue;
         if (retval <= 0)
             break;
-        writeInternal(mOut->socket());
+        writeInternal(d->mOut->socket());
     }
 
-    if (mOut && !mOutBuffer.isEmpty())
-        mOut->setEnabled(true);
-    return mOutBuffer.isEmpty();
+    if (d->mOut && !d->mOutBuffer.isEmpty())
+        d->mOut->setEnabled(true);
+    return d->mOutBuffer.isEmpty();
 }
 
 /*!

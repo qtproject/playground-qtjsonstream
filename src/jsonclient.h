@@ -44,12 +44,13 @@
 
 #include <QObject>
 #include <QVariant>
+#include <QJsonObject>
 
-#include "jsonstream.h"
 #include "jsonstream-global.h"
 
 QT_BEGIN_NAMESPACE_JSONSTREAM
 
+class JsonClientPrivate;
 class Q_ADDON_JSONSTREAM_EXPORT JsonClient : public QObject
 {
     Q_OBJECT
@@ -76,8 +77,8 @@ private slots:
     void handleSocketDisconnected();
 
 private:
-    QJsonObject  mRegistrationMessage;
-    JsonStream   mStream;
+    Q_DECLARE_PRIVATE(JsonClient)
+    QScopedPointer<JsonClientPrivate> d_ptr;
 };
 
 QT_END_NAMESPACE_JSONSTREAM

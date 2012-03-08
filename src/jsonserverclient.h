@@ -43,9 +43,7 @@
 #define _JSON_SERVER_CLIENT_H
 
 #include <QObject>
-#include <QTimer>
 #include <QJsonObject>
-#include <QWeakPointer>
 
 class QLocalSocket;
 
@@ -53,9 +51,9 @@ class QLocalSocket;
 
 QT_BEGIN_NAMESPACE_JSONSTREAM
 
-class JsonStream;
 class JsonAuthority;
 
+class JsonServerClientPrivate;
 class Q_ADDON_JSONSTREAM_EXPORT JsonServerClient : public QObject
 {
     Q_OBJECT
@@ -89,10 +87,8 @@ private slots:
     void handleDisconnect();
 
 private:
-    QString        m_identifier;
-    QLocalSocket  *m_socket;
-    JsonStream    *m_stream;
-    QWeakPointer<JsonAuthority> m_authority;
+    Q_DECLARE_PRIVATE(JsonServerClient)
+    QScopedPointer<JsonServerClientPrivate> d_ptr;
 };
 
 QT_END_NAMESPACE_JSONSTREAM

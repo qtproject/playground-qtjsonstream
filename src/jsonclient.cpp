@@ -40,6 +40,7 @@
 ****************************************************************************/
 
 #include "jsonclient.h"
+#include "jsonstream.h"
 
 #include <QLocalSocket>
 #include <QTcpSocket>
@@ -48,6 +49,27 @@
 #include <QtCore/qmetaobject.h>
 
 QT_BEGIN_NAMESPACE_JSONSTREAM
+
+/****************************************************************************/
+
+/*!
+  \internal
+*/
+class JsonClientPrivate
+{
+public:
+    JsonClientPrivate()
+        : mStream(0) {}
+
+    JsonClientPrivate(const QJsonObject& message)
+        : mRegistrationMessage(message)
+        , mStream(0) {}
+
+    QJsonObject  mRegistrationMessage;
+    JsonStream   mStream;
+};
+
+/****************************************************************************/
 
 /*!
     \class JsonClient
@@ -63,9 +85,10 @@ QT_BEGIN_NAMESPACE_JSONSTREAM
  */
 JsonClient::JsonClient(const QString& registration, QObject* parent)
     : QObject(parent),
-      mStream(0)
+      d_ptr(new JsonClientPrivate())
 {
-    mRegistrationMessage.insert(QStringLiteral("token"), registration);
+    Q_D(JsonClient);
+    d->mRegistrationMessage.insert(QStringLiteral("token"), registration);
 }
 
 /*!
@@ -73,8 +96,7 @@ JsonClient::JsonClient(const QString& registration, QObject* parent)
  */
 JsonClient::JsonClient(const QJsonObject& message, QObject *parent)
     : QObject(parent),
-      mRegistrationMessage(message),
-      mStream(0)
+      d_ptr(new JsonClientPrivate(message))
 {
 }
 
@@ -83,7 +105,7 @@ JsonClient::JsonClient(const QJsonObject& message, QObject *parent)
  */
 JsonClient::JsonClient(QObject *parent)
     : QObject(parent),
-      mStream(0)
+      d_ptr(new JsonClientPrivate())
 {
 }
 
@@ -93,8 +115,9 @@ JsonClient::JsonClient(QObject *parent)
 JsonClient::~JsonClient()
 {
     // Variant streams don't own the socket
-    QIODevice *device = mStream.device();
-    mStream.setDevice(0);
+    Q_D(JsonClient);
+    QIODevice *device = d->mStream.device();
+    d->mStream.setDevice(0);
     if (device)
         delete device;
 }
@@ -111,11 +134,12 @@ bool JsonClient::connectTCP(const QString& hostname, int port)
 
     if (socket->waitForConnected()) {
         connect(socket, SIGNAL(disconnected()), SLOT(handleSocketDisconnected()));
-        mStream.setDevice(socket);
-        connect(&mStream, SIGNAL(receive(const QJsonObject&)),
+        Q_D(JsonClient);
+        d->mStream.setDevice(socket);
+        connect(&d->mStream, SIGNAL(receive(const QJsonObject&)),
                 this, SIGNAL(receive(const QJsonObject&)));
 
-        mStream.send(mRegistrationMessage);
+        d->mStream.send(d->mRegistrationMessage);
         return true;
     }
 
@@ -139,11 +163,12 @@ bool JsonClient::connectLocal(const QString& socketname)
 
     if (socket->waitForConnected()) {
         connect(socket, SIGNAL(disconnected()), SLOT(handleSocketDisconnected()));
-        mStream.setDevice(socket);
-        connect(&mStream, SIGNAL(messageReceived(const QJsonObject&)),
+        Q_D(JsonClient);
+        d->mStream.setDevice(socket);
+        connect(&d->mStream, SIGNAL(messageReceived(const QJsonObject&)),
                 this, SIGNAL(messageReceived(const QJsonObject&)));
         // qDebug() << "Sending local socket registration message" << mRegistrationMessage;
-        mStream.send(mRegistrationMessage);
+        d->mStream.send(d->mRegistrationMessage);
         return true;
     }
     delete socket;
@@ -156,8 +181,9 @@ bool JsonClient::connectLocal(const QString& socketname)
 
 void JsonClient::send(const QJsonObject &message)
 {
-    if (mStream.isOpen()) {
-        mStream << message;
+    Q_D(JsonClient);
+    if (d->mStream.isOpen()) {
+        d->mStream << message;
     } else {
         qCritical() << Q_FUNC_INFO << "stream socket is not available";
     }
@@ -170,7 +196,8 @@ void JsonClient::send(const QJsonObject &message)
 
 void JsonClient::setFormat( EncodingFormat format )
 {
-    mStream.setFormat(format);
+    Q_D(JsonClient);
+    d->mStream.setFormat(format);
 }
 
 /*!
@@ -178,11 +205,12 @@ void JsonClient::setFormat( EncodingFormat format )
 */
 void JsonClient::handleSocketDisconnected()
 {
-    QIODevice *device = mStream.device();
+    Q_D(JsonClient);
+    QIODevice *device = d->mStream.device();
     if (!device)
         return;
 
-    mStream.setDevice(0);
+    d->mStream.setDevice(0);
     device->deleteLater();
     emit disconnected();
 }

@@ -42,15 +42,15 @@
 #ifndef _JSON_STREAM_H
 #define _JSON_STREAM_H
 
-#include <QVariant>
+#include <QIODevice>
 #include <QJsonObject>
-#include <QJsonDocument>
 #include "jsonstream-global.h"
 
 QT_BEGIN_NAMESPACE_JSONSTREAM
 
 class JsonBuffer;
 
+class JsonStreamPrivate;
 class Q_ADDON_JSONSTREAM_EXPORT JsonStream : public QObject
 {
     Q_OBJECT
@@ -81,9 +81,8 @@ protected:
     void sendInternal(const QByteArray& byteArray);
 
 private:
-    QIODevice       *mDevice;
-    JsonBuffer      *mBuffer;
-    EncodingFormat   mFormat;
+    Q_DECLARE_PRIVATE(JsonStream)
+    QScopedPointer<JsonStreamPrivate> d_ptr;
 };
 
 JsonStream& operator<<( JsonStream&, const QJsonObject& );

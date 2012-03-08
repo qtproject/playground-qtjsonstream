@@ -43,22 +43,17 @@
 #define _JSON_SERVER_H
 
 #include <QObject>
-#include <QMap>
 #include <QJsonObject>
-#include <QSet>
-
-class QLocalServer;
 
 #include "jsonstream-global.h"
 #include "schemaerror.h"
 
 QT_BEGIN_NAMESPACE_JSONSTREAM
 
-class JsonStream;
 class JsonAuthority;
-class JsonServerClient;
 class SchemaValidator;
 
+class JsonServerPrivate;
 class Q_ADDON_JSONSTREAM_EXPORT JsonServer : public QObject
 {
     Q_OBJECT
@@ -75,7 +70,7 @@ public:
 
     void enableQueuing(const QString &identifier);
     void disableQueuing(const QString &identifier);
-    bool isQueuingEnabled(const QString &identifier);
+    bool isQueuingEnabled(const QString &identifier) const;
     void clearQueue(const QString &identifier);
 
     void enableMultipleConnections(const QString& identifier);
@@ -90,7 +85,7 @@ public:
     };
     Q_DECLARE_FLAGS(ValidatorFlags, ValidatorFlag)
 
-    ValidatorFlags validatorFlags() const { return m_validatorFlags; }
+    ValidatorFlags validatorFlags() const;
     void setValidatorFlags(ValidatorFlags);
 
     SchemaValidator *inboundValidator();
@@ -124,13 +119,8 @@ private:
     void initSchemaValidation();
 
 private:
-    QMap<QLocalServer *, JsonAuthority *>  m_localServers;
-    QMultiMap<QString, JsonServerClient *> m_identifierToClient;
-    QMap<QString, QList<QJsonObject> >     m_messageQueues;
-    QSet<QString>                          m_multipleConnections;
-    ValidatorFlags                         m_validatorFlags;
-    SchemaValidator                       *m_inboundValidator;
-    SchemaValidator                       *m_outboundValidator;
+    Q_DECLARE_PRIVATE(JsonServer)
+    QScopedPointer<JsonServerPrivate> d_ptr;
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(JsonServer::ValidatorFlags)

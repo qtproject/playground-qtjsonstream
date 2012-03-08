@@ -65,6 +65,34 @@ inline bool canValidate(JsonServer::ValidatorFlags flags, SchemaValidator *valid
     return flags != JsonServer::NoValidation && validator && !validator->isEmpty();
 }
 
+class JsonServerPrivate
+{
+public:
+    JsonServerPrivate()
+        : m_inboundValidator(0)
+        , m_outboundValidator(0) {}
+
+    ~JsonServerPrivate()
+    {
+        qDeleteAll(m_identifierToClient);
+        foreach (QLocalServer *server, m_localServers.keys())
+            delete server;
+
+        if (m_inboundValidator)
+            delete m_inboundValidator;
+
+        if (m_outboundValidator)
+            delete m_outboundValidator;
+    }
+
+    QMap<QLocalServer *, JsonAuthority *>  m_localServers;
+    QMultiMap<QString, JsonServerClient *> m_identifierToClient;
+    QMap<QString, QList<QJsonObject> >     m_messageQueues;
+    QSet<QString>                          m_multipleConnections;
+    JsonServer::ValidatorFlags             m_validatorFlags;
+    SchemaValidator                       *m_inboundValidator;
+    SchemaValidator                       *m_outboundValidator;
+};
 
 /**************************************************************************************************/
 
@@ -115,8 +143,7 @@ inline bool canValidate(JsonServer::ValidatorFlags flags, SchemaValidator *valid
 */
 JsonServer::JsonServer(QObject *parent)
     : QObject(parent)
-    , m_inboundValidator(0)
-    , m_outboundValidator(0)
+    , d_ptr(new JsonServerPrivate())
 {
     initSchemaValidation(); // initialize validation if defined by environment
 }
@@ -128,9 +155,6 @@ JsonServer::JsonServer(QObject *parent)
 */
 JsonServer::~JsonServer()
 {
-    qDeleteAll(m_identifierToClient);
-    foreach (QLocalServer *server, m_localServers.keys())
-        delete server;
 }
 
 /*!
@@ -156,11 +180,12 @@ bool JsonServer::listen(const QString &socketname, JsonAuthority *authority)
 {
     QLocalServer::removeServer(socketname);
     QLocalServer *server = new QLocalServer(this);
-    m_localServers.insert(server, authority);
+    Q_D(JsonServer);
+    d->m_localServers.insert(server, authority);
     QObject::connect(server, SIGNAL(newConnection()), this, SLOT(handleLocalConnection()));
     if (!server->listen(socketname)) {
         qCritical() << Q_FUNC_INFO << "Unable to listen on socket:" << socketname;
-        m_localServers.remove(server);
+        d->m_localServers.remove(server);
         return false;
     }
     return true;
@@ -178,7 +203,8 @@ void JsonServer::handleLocalConnection()
 
     if (QLocalSocket *socket = server->nextPendingConnection()) {
         socket->setReadBufferSize(64*1024);
-        JsonAuthority *authority = m_localServers.value(server);
+        Q_D(JsonServer);
+        JsonAuthority *authority = d->m_localServers.value(server);
         JsonServerClient *client = new JsonServerClient(this);
         client->setAuthority(authority);
         client->setSocket(socket);
@@ -205,15 +231,16 @@ void JsonServer::handleLocalConnection()
 void JsonServer::handleClientAuthorized(const QString &identifier)
 {
     JsonServerClient *client = qobject_cast<JsonServerClient *>(sender());
-    bool exists = m_identifierToClient.contains(identifier);
+    Q_D(JsonServer);
+    bool exists = d->m_identifierToClient.contains(identifier);
 
-    if (exists && !m_multipleConnections.contains(identifier)) {
+    if (exists && !d->m_multipleConnections.contains(identifier)) {
         qWarning() << "Error: Multiple disallowed connections for" << identifier;
         client->stop();
     }
     else {
-        m_identifierToClient.insert(identifier, client);
-        QList<QJsonObject> messageQueue = m_messageQueues.take(identifier);
+        d->m_identifierToClient.insert(identifier, client);
+        QList<QJsonObject> messageQueue = d->m_messageQueues.take(identifier);
         foreach (const QJsonObject& message, messageQueue)
             client->send(message);
         if (!exists)
@@ -233,7 +260,8 @@ void JsonServer::clientDisconnected(const QString &identifier) {
         return;
 
     // Only emit the connectionRemoved signal if this was a valid connection
-    if (!m_identifierToClient.remove(identifier, client))
+    Q_D(JsonServer);
+    if (!d->m_identifierToClient.remove(identifier, client))
         qWarning() << "Error: Mismatched client for" << identifier;
     else
         emit connectionRemoved(identifier);
@@ -257,11 +285,12 @@ void JsonServer::handleAuthorizationFailed()
 void JsonServer::receiveMessage(const QString &identifier, const QJsonObject &message)
 {
     // do JSON schema validation if required
-    if (canValidate(validatorFlags(), m_inboundValidator)) {
-        if (!m_inboundValidator->validateSchema(message))
+    Q_D(JsonServer);
+    if (canValidate(validatorFlags(), d->m_inboundValidator)) {
+        if (!d->m_inboundValidator->validateSchema(message))
         {
             if (validatorFlags().testFlag(WarnIfInvalid)) {
-                emit inboundMessageValidationFailed(message, m_inboundValidator->getLastError());
+                emit inboundMessageValidationFailed(message, d->m_inboundValidator->getLastError());
             }
             if (validatorFlags().testFlag(DropIfInvalid)) {
                 return;
@@ -277,7 +306,8 @@ void JsonServer::receiveMessage(const QString &identifier, const QJsonObject &me
 */
 bool JsonServer::hasConnection(const QString &identifier) const
 {
-    return m_identifierToClient.contains(identifier);
+    Q_D(const JsonServer);
+    return d->m_identifierToClient.contains(identifier);
 }
 
 /*!
@@ -286,7 +316,8 @@ bool JsonServer::hasConnection(const QString &identifier) const
 
 QStringList JsonServer::connections() const
 {
-    return m_identifierToClient.uniqueKeys();
+    Q_D(const JsonServer);
+    return d->m_identifierToClient.uniqueKeys();
 }
 
 /*!
@@ -300,8 +331,9 @@ void JsonServer::enableQueuing(const QString &identifier)
     if (identifier.isEmpty())
         return;
 
-    if (!m_messageQueues.contains(identifier))
-        m_messageQueues.insert(identifier, QList<QJsonObject>());
+    Q_D(JsonServer);
+    if (!d->m_messageQueues.contains(identifier))
+        d->m_messageQueues.insert(identifier, QList<QJsonObject>());
 }
 
 /*!
@@ -312,15 +344,17 @@ void JsonServer::disableQueuing(const QString &identifier)
     if (identifier.isEmpty())
         return;
 
-    m_messageQueues.remove(identifier);
+    Q_D(JsonServer);
+    d->m_messageQueues.remove(identifier);
 }
 
 /*!
     Returns whether queuing of messages is enabled for client identified by \a identifier.
 */
-bool JsonServer::isQueuingEnabled(const QString &identifier)
+bool JsonServer::isQueuingEnabled(const QString &identifier) const
 {
-    return m_messageQueues.contains(identifier);
+    Q_D(const JsonServer);
+    return d->m_messageQueues.contains(identifier);
 }
 
 /*!
@@ -333,8 +367,9 @@ void JsonServer::clearQueue(const QString &identifier)
     if (identifier.isEmpty())
         return;
 
-    if (m_messageQueues.contains(identifier))
-        m_messageQueues.insert(identifier, QList<QJsonObject>());
+    Q_D(JsonServer);
+    if (d->m_messageQueues.contains(identifier))
+        d->m_messageQueues.insert(identifier, QList<QJsonObject>());
 }
 
 /*!
@@ -345,7 +380,8 @@ void JsonServer::clearQueue(const QString &identifier)
 
 void JsonServer::enableMultipleConnections(const QString& identifier)
 {
-    m_multipleConnections.insert(identifier);
+    Q_D(JsonServer);
+    d->m_multipleConnections.insert(identifier);
 }
 
 /*!
@@ -354,7 +390,8 @@ void JsonServer::enableMultipleConnections(const QString& identifier)
 
 void JsonServer::disableMultipleConnections(const QString& identifier)
 {
-    m_multipleConnections.remove(identifier);
+    Q_D(JsonServer);
+    d->m_multipleConnections.remove(identifier);
 }
 
 
@@ -369,11 +406,12 @@ void JsonServer::disableMultipleConnections(const QString& identifier)
 bool JsonServer::send(const QString &identifier, const QJsonObject &message)
 {
     // do JSON schema validation if required
-    if (canValidate(validatorFlags(), m_outboundValidator)) {
-        if (!m_outboundValidator->validateSchema(message))
+    Q_D(JsonServer);
+    if (canValidate(validatorFlags(), d->m_outboundValidator)) {
+        if (!d->m_outboundValidator->validateSchema(message))
         {
             if (validatorFlags().testFlag(WarnIfInvalid)) {
-                emit outboundMessageValidationFailed(message, m_outboundValidator->getLastError());
+                emit outboundMessageValidationFailed(message, d->m_outboundValidator->getLastError());
             }
             if (validatorFlags().testFlag(DropIfInvalid)) {
                 return false;
@@ -382,13 +420,13 @@ bool JsonServer::send(const QString &identifier, const QJsonObject &message)
     }
 
     if (isQueuingEnabled(identifier)) {
-        QList<QJsonObject> queue = m_messageQueues.value(identifier);
+        QList<QJsonObject> queue = d->m_messageQueues.value(identifier);
         queue << message;
-        m_messageQueues.insert(identifier, queue);
+        d->m_messageQueues.insert(identifier, queue);
         return true;
     }
 
-    QList<JsonServerClient*> clients = m_identifierToClient.values(identifier);
+    QList<JsonServerClient*> clients = d->m_identifierToClient.values(identifier);
     foreach (JsonServerClient *client, clients) {
         Q_ASSERT(client);
         client->send(message);
@@ -403,11 +441,12 @@ bool JsonServer::send(const QString &identifier, const QJsonObject &message)
 void JsonServer::broadcast(const QJsonObject &message)
 {
     // do JSON schema validation if required
-    if (canValidate(validatorFlags(), m_outboundValidator)) {
-        if (!m_outboundValidator->validateSchema(message))
+    Q_D(JsonServer);
+    if (canValidate(validatorFlags(), d->m_outboundValidator)) {
+        if (!d->m_outboundValidator->validateSchema(message))
         {
             if (validatorFlags().testFlag(WarnIfInvalid)) {
-                emit outboundMessageValidationFailed(message, m_outboundValidator->getLastError());
+                emit outboundMessageValidationFailed(message, d->m_outboundValidator->getLastError());
             }
             if (validatorFlags().testFlag(DropIfInvalid)) {
                 return;
@@ -416,7 +455,7 @@ void JsonServer::broadcast(const QJsonObject &message)
     }
 
     // ### No JsonServerClient should be repeated in this list
-    QList<JsonServerClient*> clients = m_identifierToClient.values();
+    QList<JsonServerClient*> clients = d->m_identifierToClient.values();
     foreach (JsonServerClient *client, clients) {
         Q_ASSERT(client);
         client->send(message);
@@ -433,7 +472,8 @@ void JsonServer::broadcast(const QJsonObject &message)
 */
 void JsonServer::removeConnection(const QString &identifier)
 {
-    QList<JsonServerClient*> clients = m_identifierToClient.values(identifier);
+    Q_D(JsonServer);
+    QList<JsonServerClient*> clients = d->m_identifierToClient.values(identifier);
     while (!clients.isEmpty()) {
         JsonServerClient *client = clients.takeFirst();
         Q_ASSERT(client);
@@ -458,16 +498,21 @@ void JsonServer::removeConnection(const QString &identifier)
 */
 
 /*!
-  \fn ValidatorFlags JsonServer::validatorFlags() const
   Return the current ValidatorFlags
 */
+JsonServer::ValidatorFlags JsonServer::validatorFlags() const
+{
+    Q_D(const JsonServer);
+    return d->m_validatorFlags;
+}
 
 /*!
   Sets validatorFlags property to \a flags.
 */
 void JsonServer::setValidatorFlags(ValidatorFlags flags)
 {
-    m_validatorFlags = flags;
+    Q_D(JsonServer);
+    d->m_validatorFlags = flags;
 }
 
 /*!
@@ -475,10 +520,11 @@ void JsonServer::setValidatorFlags(ValidatorFlags flags)
 */
 SchemaValidator *JsonServer::inboundValidator()
 {
-    if (!m_inboundValidator) {
-        m_inboundValidator = new SchemaValidator(this);
+    Q_D(JsonServer);
+    if (!d->m_inboundValidator) {
+        d->m_inboundValidator = new SchemaValidator(this);
     }
-    return m_inboundValidator;
+    return d->m_inboundValidator;
 }
 
 /*!
@@ -486,10 +532,11 @@ SchemaValidator *JsonServer::inboundValidator()
 */
 SchemaValidator *JsonServer::outboundValidator()
 {
-    if (!m_outboundValidator) {
-        m_outboundValidator = new SchemaValidator(this);
+    Q_D(JsonServer);
+    if (!d->m_outboundValidator) {
+        d->m_outboundValidator = new SchemaValidator(this);
     }
-    return m_outboundValidator;
+    return d->m_outboundValidator;
 }
 
 /*!

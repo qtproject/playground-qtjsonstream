@@ -66,6 +66,24 @@ static QByteArray bsonToByteArray(BsonObject &bson)
     return byteArray;
 }
 
+/****************************************************************************/
+
+/*!
+  \internal
+*/
+class JsonStreamPrivate
+{
+public:
+    JsonStreamPrivate()
+        : mDevice(0)
+        , mFormat(FormatUndefined) {}
+
+    QIODevice       *mDevice;
+    JsonBuffer      *mBuffer;
+    EncodingFormat   mFormat;
+};
+
+/****************************************************************************/
 
 /*!
     \class JsonStream
@@ -82,11 +100,11 @@ static QByteArray bsonToByteArray(BsonObject &bson)
 
 JsonStream::JsonStream(QIODevice *device)
     : QObject(0)
-    , mDevice(0)
-    , mFormat(FormatUndefined)
+    , d_ptr(new JsonStreamPrivate())
 {
-    mBuffer = new JsonBuffer(this);
-    connect(mBuffer, SIGNAL(objectReceived(const QJsonObject&)),
+    Q_D(JsonStream);
+    d->mBuffer = new JsonBuffer(this);
+    connect(d->mBuffer, SIGNAL(objectReceived(const QJsonObject&)),
             SLOT(objectReceived(const QJsonObject&)));
     setDevice(device);
 }
@@ -107,7 +125,8 @@ JsonStream::~JsonStream()
 
 bool JsonStream::atEnd() const
 {
-    return (mDevice && mDevice->atEnd());
+    Q_D(const JsonStream);
+    return (d->mDevice && d->mDevice->atEnd());
 }
 
 /*!
@@ -117,7 +136,8 @@ bool JsonStream::atEnd() const
 
 bool JsonStream::isOpen() const
 {
-    return (mDevice && mDevice->isOpen());
+    Q_D(const JsonStream);
+    return (d->mDevice && d->mDevice->isOpen());
 }
 
 /*!
@@ -126,7 +146,8 @@ bool JsonStream::isOpen() const
 
 QIODevice * JsonStream::device() const
 {
-    return mDevice;
+    Q_D(const JsonStream);
+    return d->mDevice;
 }
 
 /*!
@@ -138,11 +159,12 @@ QIODevice * JsonStream::device() const
 */
 void JsonStream::setDevice( QIODevice *device )
 {
-    if (mDevice) {
-        disconnect(mDevice, SIGNAL(readyRead()), this, SLOT(dataReadyOnSocket()));
-        disconnect(mDevice, SIGNAL(aboutToClose()), this, SIGNAL(aboutToClose()));
+    Q_D(JsonStream);
+    if (d->mDevice) {
+        disconnect(d->mDevice, SIGNAL(readyRead()), this, SLOT(dataReadyOnSocket()));
+        disconnect(d->mDevice, SIGNAL(aboutToClose()), this, SIGNAL(aboutToClose()));
     }
-    mDevice = device;
+    d->mDevice = device;
     if (device) {
         connect(device, SIGNAL(readyRead()), this, SLOT(dataReadyOnSocket()));
         connect(device, SIGNAL(aboutToClose()), this, SIGNAL(aboutToClose()));
@@ -157,9 +179,10 @@ void JsonStream::send(const QJsonObject& object)
 {
     QJsonDocument document(object);
 
-    switch (mFormat) {
+    Q_D(JsonStream);
+    switch (d->mFormat) {
     case FormatUndefined:
-        mFormat = FormatQBJS;
+        d->mFormat = FormatQBJS;
         // Deliberate fall through
     case FormatQBJS:
         sendInternal( document.toBinaryData() );
@@ -183,18 +206,19 @@ void JsonStream::send(const QJsonObject& object)
 
 void JsonStream::sendInternal(const QByteArray& byteArray)
 {
-    if (!mDevice) {
+    Q_D(JsonStream);
+    if (!d->mDevice) {
         qWarning() << Q_FUNC_INFO << "No device in JsonStream";
         return;
     }
 
-    int nBytes = mDevice->write( byteArray.data(), byteArray.size() );
-    if (QLocalSocket *socket = qobject_cast<QLocalSocket*>(mDevice))
+    int nBytes = d->mDevice->write( byteArray.data(), byteArray.size() );
+    if (QLocalSocket *socket = qobject_cast<QLocalSocket*>(d->mDevice))
         socket->flush();
-    else if (QAbstractSocket *socket = qobject_cast<QAbstractSocket*>(mDevice))
+    else if (QAbstractSocket *socket = qobject_cast<QAbstractSocket*>(d->mDevice))
         socket->flush();
     else
-        qWarning() << Q_FUNC_INFO << "Unknown socket type:" << mDevice->metaObject()->className();
+        qWarning() << Q_FUNC_INFO << "Unknown socket type:" << d->mDevice->metaObject()->className();
 
     if (nBytes != byteArray.size())
         qCritical() << Q_FUNC_INFO << __LINE__
@@ -208,8 +232,9 @@ void JsonStream::sendInternal(const QByteArray& byteArray)
 
 void JsonStream::objectReceived(const QJsonObject& object)
 {
-    if (mFormat == FormatUndefined)
-        mFormat = mBuffer->format();
+    Q_D(JsonStream);
+    if (d->mFormat == FormatUndefined)
+        d->mFormat = d->mBuffer->format();
     emit messageReceived(object);
 }
 
@@ -220,7 +245,8 @@ void JsonStream::objectReceived(const QJsonObject& object)
 
 void JsonStream::dataReadyOnSocket()
 {
-    mBuffer->append( mDevice->readAll());
+    Q_D(JsonStream);
+    d->mBuffer->append( d->mDevice->readAll());
 }
 
 /*!
@@ -229,7 +255,8 @@ void JsonStream::dataReadyOnSocket()
 
 EncodingFormat JsonStream::format() const
 {
-    return mFormat;
+    Q_D(const JsonStream);
+    return d->mFormat;
 }
 
 /*!
@@ -238,7 +265,8 @@ EncodingFormat JsonStream::format() const
 
 void JsonStream::setFormat( EncodingFormat format )
 {
-    mFormat = format;
+    Q_D(JsonStream);
+    d->mFormat = format;
 }
 
 

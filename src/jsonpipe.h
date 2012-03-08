@@ -42,9 +42,8 @@
 #ifndef _JSON_PIPE_H
 #define _JSON_PIPE_H
 
-#include <QVariant>
+#include <QObject>
 #include <QJsonObject>
-#include <QJsonDocument>
 #include "jsonstream-global.h"
 
 class QSocketNotifier;
@@ -53,6 +52,7 @@ QT_BEGIN_NAMESPACE_JSONSTREAM
 
 class JsonBuffer;
 
+class JsonPipePrivate;
 class Q_ADDON_JSONSTREAM_EXPORT JsonPipe : public QObject
 {
     Q_OBJECT
@@ -91,11 +91,8 @@ private:
     int writeInternal(int fd);
 
 private:
-    JsonBuffer      *mInBuffer;
-    QByteArray       mOutBuffer;
-    QSocketNotifier *mIn;
-    QSocketNotifier *mOut;
-    EncodingFormat   mFormat;
+    Q_DECLARE_PRIVATE(JsonPipe)
+    QScopedPointer<JsonPipePrivate> d_ptr;
 };
 
 JsonPipe& operator<<( JsonPipe&, const QJsonObject& );

@@ -48,10 +48,28 @@
 
 QT_BEGIN_NAMESPACE_JSONSTREAM
 
+
+/*!
+  \internal
+*/
+class JsonServerClientPrivate
+{
+public:
+    JsonServerClientPrivate()
+        : m_socket(0)
+        , m_stream(0) {}
+
+    QString        m_identifier;
+    QLocalSocket  *m_socket;
+    JsonStream    *m_stream;
+    QWeakPointer<JsonAuthority> m_authority;
+};
+
+/****************************************************************************/
+
 JsonServerClient::JsonServerClient(QObject *parent)
     : QObject(parent)
-    , m_socket(0)
-    , m_stream(0)
+    , d_ptr(new JsonServerClientPrivate())
 {
 }
 
@@ -66,44 +84,49 @@ JsonServerClient::~JsonServerClient()
 */
 void JsonServerClient::setAuthority(JsonAuthority *authority)
 {
-    m_authority = authority;
+    Q_D(JsonServerClient);
+    d->m_authority = authority;
 }
 
 const QLocalSocket *JsonServerClient::socket() const
 {
-    return m_socket;
+    Q_D(const JsonServerClient);
+    return d->m_socket;
 }
 
 void JsonServerClient::setSocket(QLocalSocket *socket)
 {
-    m_socket = socket;
-    m_socket->setParent(this);
+    Q_D(JsonServerClient);
+    d->m_socket = socket;
+    d->m_socket->setParent(this);
 
     if (socket) {
-        m_stream = new JsonStream(socket);
-        m_stream->setParent(this);
+        d->m_stream = new JsonStream(socket);
+        d->m_stream->setParent(this);
         connect(socket, SIGNAL(disconnected()), this, SLOT(handleDisconnect()));
-        connect(m_stream, SIGNAL(messageReceived(const QJsonObject&)),
+        connect(d->m_stream, SIGNAL(messageReceived(const QJsonObject&)),
                 this, SLOT(received(const QJsonObject&)));
     }
 }
 
 QString JsonServerClient::identifier() const
 {
-    return m_identifier;
+    Q_D(const JsonServerClient);
+    return d->m_identifier;
 }
 
 void JsonServerClient::start()
 {
-    if (!m_authority) {
-        m_identifier = QUuid::createUuid().toString();
-        emit authorized(m_identifier);
+    Q_D(JsonServerClient);
+    if (!d->m_authority) {
+        d->m_identifier = QUuid::createUuid().toString();
+        emit authorized(d->m_identifier);
     } else {
-        AuthorizationRecord authRecord = m_authority.data()->clientConnected(m_stream);
+        AuthorizationRecord authRecord = d->m_authority.data()->clientConnected(d->m_stream);
         switch (authRecord.state) {
         case JsonAuthority::StateAuthorized:
-            m_identifier = authRecord.identifier;
-            emit authorized(m_identifier);
+            d->m_identifier = authRecord.identifier;
+            emit authorized(d->m_identifier);
             break;
         case JsonAuthority::StateNotAuthorized:
             emit authorizationFailed();
@@ -122,25 +145,27 @@ void JsonServerClient::start()
 void JsonServerClient::stop()
 {
     // qDebug() << Q_FUNC_INFO;
-    disconnect(m_stream, SIGNAL(messageReceived(const QJsonObject&)),
+    Q_D(JsonServerClient);
+    disconnect(d->m_stream, SIGNAL(messageReceived(const QJsonObject&)),
                this, SLOT(received(const QJsonObject&)));
-    m_socket->disconnectFromServer();
+    d->m_socket->disconnectFromServer();
     // qDebug() << Q_FUNC_INFO << "done";
 }
 
 void JsonServerClient::received(const QJsonObject& message)
 {
-    if (m_identifier.isEmpty()) {
-        if (m_authority.isNull()) {
+    Q_D(JsonServerClient);
+    if (d->m_identifier.isEmpty()) {
+        if (d->m_authority.isNull()) {
             emit authorizationFailed();
             stop();
             return;
         } else {
-            AuthorizationRecord authRecord = m_authority.data()->messageReceived(m_stream, message);
+            AuthorizationRecord authRecord = d->m_authority.data()->messageReceived(d->m_stream, message);
             switch (authRecord.state) {
             case JsonAuthority::StateAuthorized:
-                m_identifier = authRecord.identifier;
-                emit authorized(m_identifier);
+                d->m_identifier = authRecord.identifier;
+                emit authorized(d->m_identifier);
                 break;
             case JsonAuthority::StateNotAuthorized:
                 emit authorizationFailed();
@@ -152,26 +177,28 @@ void JsonServerClient::received(const QJsonObject& message)
         }
     }
     else {
-        emit messageReceived(m_identifier, message);
+        emit messageReceived(d->m_identifier, message);
     }
 }
 
 void JsonServerClient::send(const QJsonObject &message)
 {
-    if (m_stream) {
+    Q_D(JsonServerClient);
+    if (d->m_stream) {
         // qDebug() << "Sending message" << message;
-        m_stream->send(message);
+        d->m_stream->send(message);
     }
 }
 
 void JsonServerClient::handleDisconnect()
 {
     // qDebug() << Q_FUNC_INFO;
-    m_stream->setDevice(0);
-    if (m_authority.data())
-        m_authority.data()->clientDisconnected(m_stream);
-    if (!m_identifier.isEmpty())
-        emit disconnected(m_identifier);
+    Q_D(JsonServerClient);
+    d->m_stream->setDevice(0);
+    if (d->m_authority.data())
+        d->m_authority.data()->clientDisconnected(d->m_stream);
+    if (!d->m_identifier.isEmpty())
+        emit disconnected(d->m_identifier);
     // qDebug() << Q_FUNC_INFO << "done";
 }
 
