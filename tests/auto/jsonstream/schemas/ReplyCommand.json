@@ -3,6 +3,6 @@
    "description": "Send a command",
    "type": "object",
    "properties": {
-     "command": {"type":"string", "required":true },
+     "command": {"type":"string", "required":true }
    }
  }
