@@ -104,9 +104,9 @@ public:
     It consists of the following components:
 
     \list
-       \o JsonClient, a client-side class which sends and receives JSON messages
-       \o JsonServer, the server class which sends and receives JSON messages
-       \o JsonAuthority, an abstract authorization class which
+       \li JsonClient, a client-side class which sends and receives JSON messages
+       \li JsonServer, the server class which sends and receives JSON messages
+       \li JsonAuthority, an abstract authorization class which
           approves connections from clients and assigns client names.
     \endlist
 
@@ -174,7 +174,7 @@ bool JsonServer::listen( int port, JsonAuthority *authority )
   If the \a authority is omitted or NULL, all connections will be automatically authorized and
   a unique identifier generated for each new connection. Returns true if the socket could be opened.
 
-  Does \bold{not} take ownership of the \a authority object.
+  Does \b{not} take ownership of the \a authority object.
  */
 bool JsonServer::listen(const QString &socketname, JsonAuthority *authority)
 {
@@ -398,7 +398,7 @@ void JsonServer::disableMultipleConnections(const QString& identifier)
 
 /*!
     Sends an arbitrary \a message to the client application identified by \a identifier and returns true when
-    the client was found and the message could be sent. The return value does \bold{not} indicate that
+    the client was found and the message could be sent. The return value does \b{not} indicate that
     the client actually received the message and reacted to it, only that the JsonServer had a connection
     open to that client, and was able to dispatch the message.
 

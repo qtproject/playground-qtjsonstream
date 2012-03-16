@@ -46,6 +46,15 @@
 */
 
 /*!
+  \headerfile <jsonstream-global.h>
+  \title Global JsonStream declarations
+
+  \brief The <jsonstream-global.h> file provides namespace
+         declarations and global enumerations for JsonStream.
+ */
+
+/*!
+  \relates <jsonstream-global.h>
   \enum EncodingFormat
 
   This enum is used to control the serialization format of the data stream.

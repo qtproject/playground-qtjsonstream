@@ -68,9 +68,6 @@ static QByteArray bsonToByteArray(BsonObject &bson)
 
 /****************************************************************************/
 
-/*!
-  \internal
-*/
 class JsonStreamPrivate
 {
 public:
@@ -271,17 +268,14 @@ void JsonStream::setFormat( EncodingFormat format )
 
 
 /*!
-    Sends the \a map via the stream.
-    The QVariant types allowed are restricted to basic types supported
-    by the BsonObject which is in principle bool, int, long, QString and
-    arrays and maps of them.
+    \relates JsonStream
 
-    \sa BsonObject
+    Sends the \a map via the \a stream.
 */
-JsonStream& operator<<( JsonStream& s, const QJsonObject& map )
+JsonStream& operator<<( JsonStream& stream, const QJsonObject& map )
 {
-    s.send(map);
-    return s;
+    stream.send(map);
+    return stream;
 }
 
 
@@ -294,8 +288,6 @@ JsonStream& operator<<( JsonStream& s, const QJsonObject& map )
 /*!
     \fn void JsonStream::aboutToClose()
     This signal is emitted when the underlying \c QIODevice is about to close.
-
-    \sa QIODevice
 */
 
 #include "moc_jsonstream.cpp"

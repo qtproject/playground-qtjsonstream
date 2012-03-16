@@ -58,9 +58,6 @@ QT_BEGIN_NAMESPACE_JSONSTREAM
 
 /****************************************************************************/
 
-/*!
-  \internal
-*/
 class JsonPipePrivate
 {
 public:
@@ -86,6 +83,18 @@ public:
     JSON data over pipe connections.  It is designed to support multiple serialization
     and deserialization formats by auto-detecting the format in use.
 */
+
+/*!
+    \enum JsonPipe::PipeError
+
+    This enum is passed in the \l{error()} signal indicating a problem
+    with a pipe connection.
+
+    \value WriteFailed  Unable to write to the outgoing pipe
+    \value WriteAtEnd   The outgoing pipe has been closed
+    \value ReadFailed   Unable to read from the incoming pipe
+    \value ReadAtEnd    The incoming pipe has been closed
+ */
 
 /*!
   Constructs a \c JsonPipe object with an optional \a parent.
@@ -130,7 +139,8 @@ bool JsonPipe::readEnabled() const
 }
 
 /*!
-  Set the current file descriptors
+  Set the current file descriptors.  The input descriptor is set to \a
+  in_fd and the output descriptor is set to \a out_fd.
 */
 
 void JsonPipe::setFds(int in_fd, int out_fd)
@@ -148,6 +158,10 @@ void JsonPipe::setFds(int in_fd, int out_fd)
     d->mIn->setEnabled(true);
     d->mOut->setEnabled(d->mOutBuffer.size() > 0);
 }
+
+/*!
+  \internal
+ */
 
 void JsonPipe::inReady(int fd)
 {
@@ -190,6 +204,10 @@ int JsonPipe::writeInternal(int fd)
     return n;
 }
 
+/*!
+  \internal
+*/
+
 void JsonPipe::outReady(int)
 {
     Q_D(JsonPipe);
@@ -203,7 +221,9 @@ void JsonPipe::outReady(int)
 }
 
 /*!
-  Send a JsonObject \a object over the pipe
+  Send a JsonObject \a object over the pipe.  Return true if
+  the object could be added to the output buffer and false if there is
+  no output buffer.
 */
 
 bool JsonPipe::send(const QJsonObject& object)
@@ -270,10 +290,11 @@ void JsonPipe::setFormat( EncodingFormat format )
     d->mFormat = format;
 }
 
-/*
+/*!
   Blocks until all of the output buffer has been written to the pipe.
   We return true if and only if there was data to be written and it
-  was successfully written.
+  was successfully written.  The \a msecs parameter is the maximum
+  number of milliseconds to block before giving up.
  */
 
 bool JsonPipe::waitForBytesWritten(int msecs)
@@ -314,17 +335,15 @@ bool JsonPipe::waitForBytesWritten(int msecs)
 }
 
 /*!
-    Sends the \a map via the pipe.
-    The QVariant types allowed are restricted to basic types supported
-    by the BsonObject which is in principle bool, int, long, QString and
-    arrays and maps of them.
+  \relates JsonPipe
 
-    \sa BsonObject
+    Sends the \a map via the \a pipe.
 */
-JsonPipe& operator<<( JsonPipe& s, const QJsonObject& map )
+
+JsonPipe& operator<<( JsonPipe& pipe, const QJsonObject& map )
 {
-    s.send(map);
-    return s;
+    pipe.send(map);
+    return pipe;
 }
 
 /*!
@@ -334,10 +353,9 @@ JsonPipe& operator<<( JsonPipe& s, const QJsonObject& map )
 */
 
 /*!
-    \fn void JsonPipe::aboutToClose()
-    This signal is emitted when the underlying \c QIODevice is about to close.
-
-    \sa QIODevice
+    \fn void JsonPipe::error(PipeError err)
+    This signal is emitted when there is a read or write pipe error \a
+    err.
 */
 
 #include "moc_jsonpipe.cpp"

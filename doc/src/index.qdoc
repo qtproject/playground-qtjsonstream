@@ -38,11 +38,11 @@ Javascript-based programming languages is to use \l
 {http://www.json.org} {JSON} data-interchange format.
 The JSON Stream classes implement a client/server framework.
 
-\bold{Discussion and examples}
+\b{Discussion and examples}
 \list
- \o \l{Stream serialization}
- \o \l{Using JSON stream classes}
- \o \l{Authority notes}
+ \li \l{Stream serialization}
+ \li \l{Using JSON stream classes}
+ \li \l{Authority notes}
 \endlist
 
 The JSON Stream classes depend on the Qt Json experimental JSON module.

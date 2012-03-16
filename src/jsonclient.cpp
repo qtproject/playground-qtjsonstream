@@ -52,9 +52,6 @@ QT_BEGIN_NAMESPACE_JSONSTREAM
 
 /****************************************************************************/
 
-/*!
-  \internal
-*/
 class JsonClientPrivate
 {
 public:

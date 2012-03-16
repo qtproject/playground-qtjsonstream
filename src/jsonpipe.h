@@ -84,9 +84,6 @@ protected slots:
     void inReady(int fd);
     void outReady(int fd);
 
-protected:
-    void sendInternal(const QByteArray& byteArray);
-
 private:
     int writeInternal(int fd);
 

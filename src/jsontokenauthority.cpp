@@ -86,7 +86,7 @@ bool JsonTokenAuthority::authorize(const QByteArray &token, const QString &ident
 
 /*!
     Remove a \a token from the valid hash table.  Calling this function does
-    \bold{not} disconnect any existing clients.  Return true if the token was in the table, false if it was not.
+    \b{not} disconnect any existing clients.  Return true if the token was in the table, false if it was not.
 */
 bool JsonTokenAuthority::deauthorize(const QByteArray &token)
 {

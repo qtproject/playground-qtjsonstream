@@ -35,17 +35,17 @@
 One key challenge with JSON is that there are a number of different
 ways that JSON can be serialized to be sent over a socket connection:
 \list
- \o UTF-8 encoded (the default)
- \o UTF-16 LE or BE
- \o UTF-32 LE or BE
- \o \l {http://bsonspec.org} {BSON} (Binary JSON)
- \o \l Qt Json [ssh://codereview.qt-project.org:29418/playground/qtbinaryjson.git]
+ \li UTF-8 encoded (the default)
+ \li UTF-16 LE or BE
+ \li UTF-32 LE or BE
+ \li \l {http://bsonspec.org} {BSON} (Binary JSON)
+ \li \l Qt Json [ssh://codereview.qt-project.org:29418/playground/qtbinaryjson.git]
 \endlist
 For a discussion of the UTF encoding formats, see \l
 {http://www.ietf.org/rfc/rfc4627} {RFC4627}.
 
 The JSON stream reference supports all standard encoding formats by
-\bold{auto-detection}.  The server class assumes that communication
+\b{auto-detection}.  The server class assumes that communication
 will be initiated by the client. The initial bytes received are
 matched to the signature of one of the serialization techniques and
 the connection is set to that format.
@@ -54,50 +54,50 @@ To be specific, the server matches (table data from \l
 {http://www.ietf.org/rfc/rfc4627} {RFC4627}):
 \table
 \header
-  \o Encoding
-  \o Bytes
-  \o Discussion
+  \li Encoding
+  \li Bytes
+  \li Discussion
 \row
-  \o UTF-8
-  \o 7B xx yy zz
-  \o First byte should be the '{' character, followed by whitespace
+  \li UTF-8
+  \li 7B xx yy zz
+  \li First byte should be the '{' character, followed by whitespace
      and a '"' quotation mark.
 \row
-  \o BSON
-  \o 62 73 6F 6E
-  \o First four bytes are 'bson'.  Strictly speaking, this is
+  \li BSON
+  \li 62 73 6F 6E
+  \li First four bytes are 'bson'.  Strictly speaking, this is
      not the true BSON format (which starts with an int32 length)
      but in the interests of autodetection we've enforced this
      requirement.  The BSON packet follows.
 \row
-  \o QBJS
-  \o 71 62 6A 73
-  \o First four bytes are 'qbjs'.  This matches the standard
+  \li QBJS
+  \li 71 62 6A 73
+  \li First four bytes are 'qbjs'.  This matches the standard
      QtJson::JsonDocument header.
 \row
-  \o UTF-32BE
-  \o 00 00 00 7B
-  \o First four bytes should be the '{' character
+  \li UTF-32BE
+  \li 00 00 00 7B
+  \li First four bytes should be the '{' character
 \row
-  \o UTF-32LE
-  \o 7B 00 00 00
-  \o First four bytes should be the '{' character.
+  \li UTF-32LE
+  \li 7B 00 00 00
+  \li First four bytes should be the '{' character.
 \row
-  \o Raw UTF-16BE
-  \o 00 7B 00 xx
-  \o First two bytes should be the '{' character.
+  \li Raw UTF-16BE
+  \li 00 7B 00 xx
+  \li First two bytes should be the '{' character.
 \row
-  \o Raw UTF-16LE
-  \o 7B 00 xx 00
-  \o First two bytes should be the '{' character.
+  \li Raw UTF-16LE
+  \li 7B 00 xx 00
+  \li First two bytes should be the '{' character.
 \row
-  \o UTF-16BE with BOM
-  \o FE FF 00 7B
-  \o U+FEFF + '{'
+  \li UTF-16BE with BOM
+  \li FE FF 00 7B
+  \li U+FEFF + '{'
 \row
-  \o UTF-16LE with BOM
-  \o FF FE 7B 00
-  \o U+FEFF + '{'
+  \li UTF-16LE with BOM
+  \li FF FE 7B 00
+  \li U+FEFF + '{'
 \endtable
 
 Clearly, there is a danger that the BSON encoding format could be

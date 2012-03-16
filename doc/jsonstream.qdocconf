@@ -1,4 +1,4 @@
-alias.i = e
+# alias.i = e
 
 project     = JsonStream
 description = JSONStream Manager Documentation

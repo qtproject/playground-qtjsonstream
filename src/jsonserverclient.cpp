@@ -48,10 +48,6 @@
 
 QT_BEGIN_NAMESPACE_JSONSTREAM
 
-
-/*!
-  \internal
-*/
 class JsonServerClientPrivate
 {
 public:
@@ -67,11 +63,24 @@ public:
 
 /****************************************************************************/
 
+/*!
+  \class JsonServerClient
+  \brief The JsonServerClient class wraps an individual connection to the JsonServer.
+ */
+
+/*!
+  Construct a JsonServerClient object with the given \a parent
+ */
+
 JsonServerClient::JsonServerClient(QObject *parent)
     : QObject(parent)
     , d_ptr(new JsonServerClientPrivate())
 {
 }
+
+/*!
+  Destructs the JsonServerClient object.
+ */
 
 JsonServerClient::~JsonServerClient()
 {
@@ -88,11 +97,19 @@ void JsonServerClient::setAuthority(JsonAuthority *authority)
     d->m_authority = authority;
 }
 
+/*!
+  Return the internal socket object
+*/
+
 const QLocalSocket *JsonServerClient::socket() const
 {
     Q_D(const JsonServerClient);
     return d->m_socket;
 }
+
+/*!
+  Set the internal socket object to \a socket.
+ */
 
 void JsonServerClient::setSocket(QLocalSocket *socket)
 {
@@ -109,11 +126,20 @@ void JsonServerClient::setSocket(QLocalSocket *socket)
     }
 }
 
+/*!
+  Return the client identifier
+ */
+
 QString JsonServerClient::identifier() const
 {
     Q_D(const JsonServerClient);
     return d->m_identifier;
 }
+
+/*!
+  Start processing messages from this client.  This function should
+  only be called by the \l{JsonServer}
+ */
 
 void JsonServerClient::start()
 {
@@ -181,6 +207,10 @@ void JsonServerClient::received(const QJsonObject& message)
     }
 }
 
+/*!
+  Send a \a message to the client.
+ */
+
 void JsonServerClient::send(const QJsonObject &message)
 {
     Q_D(JsonServerClient);
@@ -201,6 +231,32 @@ void JsonServerClient::handleDisconnect()
         emit disconnected(d->m_identifier);
     // qDebug() << Q_FUNC_INFO << "done";
 }
+
+/*!
+  \fn JsonServerClient::disconnected(const QString& identifier)
+  This signal is emitted when the client has been disconnected.  The
+  \a identifier property is included for convenience.
+ */
+
+/*!
+  \fn JsonServerClient::messageReceived(const QString& identifier, const QJsonObject& message)
+
+  This signal is emitted when a \a message has been received by the client. The
+  \a identifier property is included for convenience.
+ */
+
+/*!
+  \fn JsonServerClient::authorized(const QString& identifier)
+
+  This signal is emitted when the client has been authorized. The
+  \a identifier property is included for convenience.
+ */
+
+/*!
+  \fn JsonServerClient::authorizationFailed()
+
+  This signal is emitted when the client has failed authorization.
+ */
 
 #include "moc_jsonserverclient.cpp"
 

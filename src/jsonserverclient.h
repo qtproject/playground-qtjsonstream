@@ -73,8 +73,6 @@ public:
 
     QString identifier() const;
 
-    QList<QJsonObject> messageQueue() const;
-
 signals:
     void disconnected(const QString& identifier);
     void messageReceived(const QString& identifier, const QJsonObject& message);
