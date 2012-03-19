@@ -65,4 +65,6 @@
   \value FormatUTF8         UTF-8
   \value FormatBSON         BSON binary format
   \value FormatQBJS         Qt Binary Json
+  \value FormatUTF16BE      UTF-16, Big Endian
+  \value FormatUTF16LE      UTF-16, Little Endian
 */
