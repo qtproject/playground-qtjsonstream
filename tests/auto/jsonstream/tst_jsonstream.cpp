@@ -367,7 +367,7 @@ void tst_JsonStream::formatTest()
 {
     QString socketname = "/tmp/tst_socket";
 
-    QStringList formats = QStringList() << "qbjs" << "bson" << "utf8";
+    QStringList formats = QStringList() << "qbjs" << "bson" << "utf8" << "utf16be" << "utf16le";
 
     foreach (const QString& format, formats) {
         BasicServer server(socketname);
@@ -392,6 +392,10 @@ void tst_JsonStream::formatTest()
             QVERIFY(server.format() == FormatBSON);
         else if (format == "utf8")
             QVERIFY(server.format() == FormatUTF8);
+        else if (format == "utf16be")
+            QVERIFY(server.format() == FormatUTF16BE);
+        else if (format == "utf16le")
+            QVERIFY(server.format() == FormatUTF16LE);
         else
             QFAIL("Unrecognized format");
 
@@ -533,7 +537,7 @@ void tst_JsonStream::pipeTest()
 
 void tst_JsonStream::pipeFormatTest()
 {
-    QList<EncodingFormat> formats = QList<EncodingFormat>() << FormatUTF8 << FormatBSON << FormatQBJS;
+    QList<EncodingFormat> formats = QList<EncodingFormat>() << FormatUTF8 << FormatBSON << FormatQBJS << FormatUTF16BE << FormatUTF16LE;
 
     foreach (EncodingFormat format, formats) {
         Pipes pipes;

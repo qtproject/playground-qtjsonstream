@@ -45,6 +45,7 @@
 #include <QAbstractSocket>
 #include <QtEndian>
 #include <qjsondocument.h>
+#include <QTextCodec>
 
 #include "jsonstream.h"
 #include "jsonbuffer_p.h"
@@ -186,6 +187,12 @@ void JsonStream::send(const QJsonObject& object)
         break;
     case FormatUTF8:
         sendInternal( document.toJson() );
+        break;
+    case FormatUTF16BE:
+        sendInternal( QTextCodec::codecForName("UTF-16BE")->fromUnicode(QString::fromUtf8(document.toJson())).mid(2) );  // Chop off BOM
+        break;
+    case FormatUTF16LE:
+        sendInternal( QTextCodec::codecForName("UTF-16LE")->fromUnicode(QString::fromUtf8(document.toJson())).mid(2) );  // Chop off BOM
         break;
     case FormatBSON:
     {

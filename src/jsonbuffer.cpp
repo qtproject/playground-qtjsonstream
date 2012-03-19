@@ -42,6 +42,7 @@
 #include <QDebug>
 #include <QtEndian>
 #include <QJsonDocument>
+#include <QTextCodec>
 
 #include "jsonbuffer_p.h"
 #include "qjsondocument.h"
@@ -136,6 +137,52 @@ void JsonBuffer::clear()
   \internal
 */
 
+bool JsonBuffer::scanUtf( int c )
+{
+    switch (mParserState) {
+    case ParseNormal:
+        if ( c == '{' ) {
+            if ( mParserDepth == 0 )
+                mParserStartOffset = mParserOffset;
+            mParserDepth += 1;
+        }
+        else if ( c == '}' && mParserDepth > 0 ) {
+            mParserDepth -= 1;
+            if ( mParserDepth == 0 ) {
+                mParserOffset++;
+                return true;
+            }
+        }
+        else if ( c == '"' ) {
+            mParserState = ParseInString;
+        }
+        break;
+    case ParseInString:
+        if ( c == '"' ) {
+            mParserState = ParseNormal;
+        } else if ( c == '\\' ) {
+            mParserState = ParseInBackslash;
+        }
+        break;
+    case ParseInBackslash:
+        mParserState = ParseInString;
+        break;
+    }
+    return false;
+}
+
+void JsonBuffer::resetParser()
+{
+    mParserState  = ParseNormal;
+    mParserDepth  = 0;
+    mParserOffset = 0;
+    mParserStartOffset = -1;
+}
+
+/*!
+  \internal
+*/
+
 void JsonBuffer::processMessages()
 {
     if (mFormat == FormatUndefined && mBuffer.size() >= 4) {
@@ -143,6 +190,16 @@ void JsonBuffer::processMessages()
             mFormat = FormatBSON;
         else if (QJsonDocument::BinaryFormatTag == *((uint *) mBuffer.data()))
             mFormat = FormatQBJS;
+        else if (mBuffer.at(0) == 0 &&
+                 mBuffer.at(1) != 0 &&
+                 mBuffer.at(2) == 0 &&
+                 mBuffer.at(3) != 0 )
+            mFormat = FormatUTF16BE;
+        else if (mBuffer.at(0) != 0 &&
+                 mBuffer.at(1) == 0 &&
+                 mBuffer.at(2) != 0 &&
+                 mBuffer.at(3) == 0 )
+            mFormat = FormatUTF16LE;
         else
             mFormat = FormatUTF8;
     }
@@ -153,43 +210,41 @@ void JsonBuffer::processMessages()
     case FormatUTF8:
         for (  ; mParserOffset < mBuffer.size() ; mParserOffset++ ) {
             char c = mBuffer.at(mParserOffset);
-            // qDebug() << "Parsing: " << (int) c << c;
-            switch (mParserState) {
-            case ParseNormal:
-                if ( c == '{' ) {
-                    if ( mParserDepth == 0 )
-                        mParserStartOffset = mParserOffset;
-                    mParserDepth += 1;
-                }
-                else if ( c == '}' && mParserDepth > 0 ) {
-                    mParserDepth -= 1;
-                    if ( mParserDepth == 0 ) {
-                        mParserOffset++;
-                        QByteArray msg = mBuffer.mid(mParserStartOffset, mParserOffset - mParserStartOffset);
-                        QJsonObject obj = QJsonDocument::fromJson(msg).object();
-                        if (!obj.isEmpty())
-                            emit objectReceived(obj);
-                        mBuffer = mBuffer.mid(mParserOffset);
-                        mParserState  = ParseNormal;
-                        mParserDepth  = 0;
-                        mParserOffset = 0;
-                        mParserStartOffset = -1;
-                    }
-                }
-                else if ( c == '"' ) {
-                    mParserState = ParseInString;
-                }
-                break;
-            case ParseInString:
-                if ( c == '"' ) {
-                    mParserState = ParseNormal;
-                } else if ( c == '\\' ) {
-                    mParserState = ParseInBackslash;
-                }
-                break;
-            case ParseInBackslash:
-                mParserState = ParseInString;
-                break;
+            if (scanUtf(c)) {
+                QByteArray msg = mBuffer.mid(mParserStartOffset, mParserOffset - mParserStartOffset);
+                QJsonObject obj = QJsonDocument::fromJson(msg).object();
+                if (!obj.isEmpty())
+                    emit objectReceived(obj);
+                mBuffer = mBuffer.mid(mParserOffset);
+                resetParser();
+            }
+        }
+        break;
+    case FormatUTF16BE:
+        for (  ; 2 * mParserOffset < mBuffer.size() ; mParserOffset++ ) {
+            int16_t c = qFromBigEndian(reinterpret_cast<const int16_t *>(mBuffer.constData())[mParserOffset]);
+            if (scanUtf(c)) {
+                QByteArray msg = mBuffer.mid(mParserStartOffset * 2, 2*(mParserOffset - mParserStartOffset));
+                QString s = QTextCodec::codecForName("UTF-16BE")->toUnicode(msg);
+                QJsonObject obj = QJsonDocument::fromJson(s.toUtf8()).object();
+                if (!obj.isEmpty())
+                    emit objectReceived(obj);
+                mBuffer = mBuffer.mid(mParserOffset*2);
+                resetParser();
+            }
+        }
+        break;
+    case FormatUTF16LE:
+        for (  ; 2 * mParserOffset < mBuffer.size() ; mParserOffset++ ) {
+            int16_t c = qFromLittleEndian(reinterpret_cast<const int16_t *>(mBuffer.constData())[mParserOffset]);
+            if (scanUtf(c)) {
+                QByteArray msg = mBuffer.mid(mParserStartOffset * 2, 2*(mParserOffset - mParserStartOffset));
+                QString s = QTextCodec::codecForName("UTF-16LE")->toUnicode(msg);
+                QJsonObject obj = QJsonDocument::fromJson(s.toUtf8()).object();
+                if (!obj.isEmpty())
+                    emit objectReceived(obj);
+                mBuffer = mBuffer.mid(mParserOffset*2);
+                resetParser();
             }
         }
         break;

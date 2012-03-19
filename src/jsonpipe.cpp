@@ -45,6 +45,7 @@
 #include <QElapsedTimer>
 #include <qjsondocument.h>
 #include <qjsonobject.h>
+#include <QTextCodec>
 
 #include <sys/select.h>
 #include <stdio.h>
@@ -243,6 +244,12 @@ bool JsonPipe::send(const QJsonObject& object)
         break;
     case FormatUTF8:
         d->mOutBuffer.append(document.toJson());
+        break;
+    case FormatUTF16BE:
+        d->mOutBuffer.append( QTextCodec::codecForName("UTF-16BE")->fromUnicode(QString::fromUtf8(document.toJson())).mid(2) );
+        break;
+    case FormatUTF16LE:
+        d->mOutBuffer.append( QTextCodec::codecForName("UTF-16LE")->fromUnicode(QString::fromUtf8(document.toJson())).mid(2) );
         break;
     case FormatBSON:
     {

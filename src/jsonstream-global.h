@@ -67,7 +67,7 @@
 
 QT_BEGIN_NAMESPACE_JSONSTREAM
 
-enum EncodingFormat { FormatUndefined, FormatUTF8, FormatBSON, FormatQBJS };
+enum EncodingFormat { FormatUndefined, FormatUTF8, FormatBSON, FormatQBJS, FormatUTF16BE, FormatUTF16LE };
 
 QT_END_NAMESPACE_JSONSTREAM
 

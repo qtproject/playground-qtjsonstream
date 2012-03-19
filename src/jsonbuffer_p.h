@@ -67,6 +67,8 @@ signals:
 
 private:
     void processMessages();
+    bool scanUtf(int c);
+    void resetParser();
 
 private:
     enum UTF8ParsingState { ParseNormal, ParseInString, ParseInBackslash };
