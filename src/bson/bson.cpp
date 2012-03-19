@@ -89,7 +89,7 @@ void bson_print_raw( const char * data , int depth ){
         case bson_double: printf( "%f" , bson_iterator_double( &i ) ); break;
         case bson_bool: printf( "%s" , bson_iterator_bool( &i ) ? "true" : "false" ); break;
         case bson_string: printf( "%s" , bson_iterator_string( &i ) ); break;
-        case bson_utf16: printf( "%s" , bson_iterator_utf16( &i ) ); break;
+        case bson_utf16: printf( "%ls" , (wchar_t *) bson_iterator_utf16( &i ) ); break;
         case bson_null: printf( "null" ); break;
         case bson_timestamp:
             ts = bson_iterator_timestamp( &i );

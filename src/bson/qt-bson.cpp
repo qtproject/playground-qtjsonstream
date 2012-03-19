@@ -95,7 +95,7 @@ BsonObject::BsonObject(const QVariantList &v)
 {
     d->mBsonType = bson_array;
     for (int i = 0; i < v.size(); i++) {
-        insert(QByteArray::number(i), v[i]);
+        insert(QString::number(i), v[i]);
     }
     finish();
 }
@@ -133,7 +133,7 @@ void BsonObject::finish()
                 bson_iterator_init(&j, bson.data);
                 while (bson_iterator_next(&j) != bson_eoo) {
                     const char *jkey = bson_iterator_key(&j);
-                    QString s(jkey);
+                    QString s = QString::fromUtf8(jkey);
                     if (newKeys.contains(s)) {
                         qCritical() << "BsonObject::finish" << "duplicate key" << s;
                     }
@@ -149,7 +149,7 @@ void BsonObject::finish()
             bson_iterator_init(&i, d->mBson.data);
             while (bson_iterator_next(&i) != bson_eoo) {
                 const char *ikey = bson_iterator_key(&i);
-                QString s(ikey);
+                QString s = QString::fromUtf8(ikey);
                 if (newKeys.contains(s)) {
                     continue;
                 }
@@ -175,10 +175,10 @@ QVariantMap BsonObject::toMap()
     while ((bt = bson_iterator_next(&it)) && (bt != bson_eoo)) {
         const char *ckey = bson_iterator_key(&it);
         QVariant v = elementToVariant(bt, &it);
-
-        if (map.contains(QByteArray(ckey)))
+        QString s = QString::fromUtf8(ckey);
+        if (map.contains(s))
             qDebug() << "BsonObject::toMap" << "duplicate key" << ckey;
-        map.insert(QByteArray(ckey), v);
+        map.insert(s, v);
     }
     return map;
 }
@@ -229,7 +229,7 @@ QList<QString> BsonObject::keys()
     bson_iterator_init(&it, d->mBson.data);
     bson_type bt;
     while ((bt = bson_iterator_next(&it)) && (bt != bson_eoo)) {
-        keys.append(QByteArray(bson_iterator_key(&it)));
+        keys.append(QString::fromUtf8(bson_iterator_key(&it)));
     }
     return keys;
 }
@@ -370,7 +370,7 @@ BsonObject &BsonObject::insert(const QString &key, const char *s)
       finish();
     }
     d->mAddedKeys.insert(key);
-    return insert(key, QString(s));
+    return insert(key, QString::fromUtf8(s));
 }
 
 BsonObject &BsonObject::insert(const QString &key, const QString &v)
@@ -563,7 +563,7 @@ QVariant BsonObject::value(const QString &key)
     case bson_eoo: // when attempting to fetch a value from an empty object
         return QVariant();
     default:
-        qCritical() << QString("Converting BsonObject element of type %1 to QVariant()").arg(t);
+        qCritical() << QString::fromLatin1("Converting BsonObject element of type %1 to QVariant()").arg(t);
         return QVariant();
     }
 }

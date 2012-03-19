@@ -43,8 +43,7 @@ typedef enum {
     bson_int = 16,
     bson_timestamp = 17,
     bson_long = 18,
-    bson_utf16 = 19,
-    bson_object_utf16 = 20
+    bson_utf16 = 19
 } bson_type;
 
 typedef enum bson_bool {
