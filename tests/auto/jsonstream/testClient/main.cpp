@@ -127,6 +127,14 @@ void Container::sendSchemaTestMessage()
 
 void Container::received(const QJsonObject& message)
 {
+    // test large string size
+    if (message.contains("large") || message.contains("large_size")) {
+        if (message.value("large").toString().size() != message.value("large_size").toDouble()) {
+            qWarning() << "Large string size mismatch" << message.value("large").toString().size() << "!=" << message.value("large_size").toDouble();
+            exit(3);
+        }
+    }
+
     QString command = message.value("command").toString();
     if (!command.isEmpty()) {
         qDebug() << "Received command" << command;

@@ -64,7 +64,7 @@ public:
     void start();
     void stop();
 
-    void send(const QJsonObject &message);
+    bool send(const QJsonObject &message);
 
     void setAuthority(JsonAuthority *authority);
 
@@ -83,6 +83,7 @@ signals:
 private slots:
     void received(const QJsonObject& message);
     void handleDisconnect();
+    void processMessages();
 
 private:
     Q_DECLARE_PRIVATE(JsonServerClient)

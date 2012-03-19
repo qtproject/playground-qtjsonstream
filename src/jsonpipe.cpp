@@ -107,8 +107,7 @@ JsonPipe::JsonPipe(QObject *parent)
 {
     Q_D(JsonPipe);
     d->mInBuffer = new JsonBuffer(this);
-    connect(d->mInBuffer, SIGNAL(objectReceived(const QJsonObject&)),
-            SLOT(objectReceived(const QJsonObject&)));
+    connect(d->mInBuffer, SIGNAL(readyReadMessage()), SLOT(processMessages()));
 }
 
 /*!
@@ -275,6 +274,21 @@ void JsonPipe::objectReceived(const QJsonObject& object)
     if (d->mFormat == FormatUndefined)
         d->mFormat = d->mInBuffer->format();
     emit messageReceived(object);
+}
+
+/*!
+  \internal
+*/
+void JsonPipe::processMessages()
+{
+    Q_D(JsonPipe);
+    d->mInBuffer->setEnabled(false);
+    while (d->mInBuffer->messageAvailable()) {
+        QJsonObject obj = d->mInBuffer->readMessage();
+        if (!obj.isEmpty())
+            objectReceived(obj);
+    }
+    d->mInBuffer->setEnabled(true);
 }
 
 /*!

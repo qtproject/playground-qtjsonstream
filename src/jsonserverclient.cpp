@@ -121,8 +121,7 @@ void JsonServerClient::setSocket(QLocalSocket *socket)
         d->m_stream = new JsonStream(socket);
         d->m_stream->setParent(this);
         connect(socket, SIGNAL(disconnected()), this, SLOT(handleDisconnect()));
-        connect(d->m_stream, SIGNAL(messageReceived(const QJsonObject&)),
-                this, SLOT(received(const QJsonObject&)));
+        connect(d->m_stream, SIGNAL(readyReadMessage()), this, SLOT(processMessages()));
     }
 }
 
@@ -172,8 +171,7 @@ void JsonServerClient::stop()
 {
     // qDebug() << Q_FUNC_INFO;
     Q_D(JsonServerClient);
-    disconnect(d->m_stream, SIGNAL(messageReceived(const QJsonObject&)),
-               this, SLOT(received(const QJsonObject&)));
+    disconnect(d->m_stream, SIGNAL(readyReadMessage()), this, SLOT(processMessages()));
     d->m_socket->disconnectFromServer();
     // qDebug() << Q_FUNC_INFO << "done";
 }
@@ -209,15 +207,18 @@ void JsonServerClient::received(const QJsonObject& message)
 
 /*!
   Send a \a message to the client.
+  Returns true if the entire message was send/buffered or false otherwise.
  */
 
-void JsonServerClient::send(const QJsonObject &message)
+bool JsonServerClient::send(const QJsonObject &message)
 {
+    bool ret = false;
     Q_D(JsonServerClient);
     if (d->m_stream) {
         // qDebug() << "Sending message" << message;
-        d->m_stream->send(message);
+        ret = d->m_stream->send(message);
     }
+    return ret;
 }
 
 void JsonServerClient::handleDisconnect()
@@ -230,6 +231,19 @@ void JsonServerClient::handleDisconnect()
     if (!d->m_identifier.isEmpty())
         emit disconnected(d->m_identifier);
     // qDebug() << Q_FUNC_INFO << "done";
+}
+
+/*!
+  \internal
+ */
+void JsonServerClient::processMessages()
+{
+    Q_D(JsonServerClient);
+    while (d->m_stream->messageAvailable()) {
+        QJsonObject obj = d->m_stream->readMessage();
+        if (!obj.isEmpty())
+            received(obj);
+    }
 }
 
 /*!

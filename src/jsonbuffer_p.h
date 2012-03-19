@@ -62,13 +62,22 @@ public:
 
     EncodingFormat  format() const;
 
+    bool messageAvailable();
+    QJsonObject readMessage();
+
+    int size() const { return mBuffer.size(); }
+
+    inline bool isEnabled() const { return mEnabled; }
+    inline void setEnabled(bool enable) { mEnabled = enable; }
+
 signals:
-    void objectReceived(const QJsonObject& object);
+    void readyReadMessage();
 
 private:
     void processMessages();
     bool scanUtf(int c);
     void resetParser();
+    QByteArray rawData(int _start, int _len) const;
 
 private:
     enum UTF8ParsingState { ParseNormal, ParseInString, ParseInBackslash };
@@ -79,7 +88,16 @@ private:
     int              mParserDepth;
     int              mParserOffset;
     int              mParserStartOffset;
+    bool             mEmittedReadyRead;
+    bool             mMessageAvailable;
+    int              mMessageSize;
+    bool             mEnabled;
 };
+
+inline QByteArray JsonBuffer::rawData(int _start, int _len) const
+{
+    return QByteArray::fromRawData(mBuffer.constData() + _start, _len);
+}
 
 QT_END_NAMESPACE_JSONSTREAM
 

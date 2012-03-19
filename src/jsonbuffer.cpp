@@ -73,31 +73,65 @@ JsonBuffer::JsonBuffer(QObject *parent)
     , mParserDepth(0)
     , mParserOffset(0)
     , mParserStartOffset(-1)
+    , mEmittedReadyRead(false)
+    , mMessageAvailable(false)
+    , mMessageSize(0)
+    , mEnabled(true)
 {
 }
 
 /*!
+    \fn bool JsonBuffer::isEnabled() const
+
+    Returns true if \l{readyReadMessage()} signal notifier is enabled; otherwise returns false.
+
+    \sa setEnabled(), readyReadMessage()
+*/
+
+/*!
+    \fn void JsonBuffer::setEnabled(bool enable)
+
+    If \a enable is true, \l{readyReadMessage()} signal notifier is enabled;
+    otherwise the notifier is disabled.
+
+    The notifier is enabled by default, i.e. it emits the \l{readyReadMessage()}
+    signal whenever a new message is ready.
+
+    The notifier should normally be disabled while user is reading existing messages.
+
+    \sa isEnabled(), readyReadMessage()
+*/
+
+/*!
+    \fn int JsonBuffer::size() const
+
+    Returns the size of the buffer in bytes.
+*/
+
+/*!
   Append the contents of a byte array \a data onto the buffer.
-  During the execution of this function, the objectReceived
+  During the execution of this function, the \l{readyReadMessage()}
   signal may be raised.
 */
 
 void JsonBuffer::append(const QByteArray& data)
 {
     mBuffer.append(data.data(), data.size());
-    processMessages();
+    if (0 < size())
+        processMessages();
 }
 
 /*!
   Append the \a data pointer with length \a len onto the JsonBuffer.
-  During the execution of this function, objectReceived
+  During the execution of this function, the \l{readyReadMessage()}
   signal may be raised.
 */
 
 void JsonBuffer::append(const char *data, int len)
 {
     mBuffer.append(data, len);
-    processMessages();
+    if (0 < size())
+        processMessages();
 }
 
 /*!
@@ -131,6 +165,7 @@ int JsonBuffer::copyFromFd(int fd)
 void JsonBuffer::clear()
 {
     mBuffer.clear();
+    resetParser();
 }
 
 /*!
@@ -177,6 +212,8 @@ void JsonBuffer::resetParser()
     mParserDepth  = 0;
     mParserOffset = 0;
     mParserStartOffset = -1;
+    mMessageAvailable = false;
+    mMessageSize = 0;
 }
 
 /*!
@@ -185,10 +222,30 @@ void JsonBuffer::resetParser()
 
 void JsonBuffer::processMessages()
 {
+    // do not process anything if disabled or if control is still inside readyReadMessage() slot
+    if (mEnabled && !mEmittedReadyRead) {
+        mEmittedReadyRead = true;
+        if (messageAvailable()) {
+            emit readyReadMessage();
+        }
+        mEmittedReadyRead = false;
+    }
+}
+
+/*!
+  \internal
+*/
+bool JsonBuffer::messageAvailable()
+{
+    if (mMessageAvailable) {
+        // already found - no need to check again
+        return true;
+    }
+
     if (mFormat == FormatUndefined && mBuffer.size() >= 4) {
-        if (strncmp("bson", mBuffer.data(), 4) == 0)
+        if (strncmp("bson", mBuffer.constData(), 4) == 0)
             mFormat = FormatBSON;
-        else if (QJsonDocument::BinaryFormatTag == *((uint *) mBuffer.data()))
+        else if (QJsonDocument::BinaryFormatTag == *((uint *) mBuffer.constData()))
             mFormat = FormatQBJS;
         else if (mBuffer.at(0) == 0 &&
                  mBuffer.at(1) != 0 &&
@@ -211,12 +268,8 @@ void JsonBuffer::processMessages()
         for (  ; mParserOffset < mBuffer.size() ; mParserOffset++ ) {
             char c = mBuffer.at(mParserOffset);
             if (scanUtf(c)) {
-                QByteArray msg = mBuffer.mid(mParserStartOffset, mParserOffset - mParserStartOffset);
-                QJsonObject obj = QJsonDocument::fromJson(msg).object();
-                if (!obj.isEmpty())
-                    emit objectReceived(obj);
-                mBuffer = mBuffer.mid(mParserOffset);
-                resetParser();
+                mMessageAvailable = true;
+                return true;
             }
         }
         break;
@@ -224,13 +277,8 @@ void JsonBuffer::processMessages()
         for (  ; 2 * mParserOffset < mBuffer.size() ; mParserOffset++ ) {
             int16_t c = qFromBigEndian(reinterpret_cast<const int16_t *>(mBuffer.constData())[mParserOffset]);
             if (scanUtf(c)) {
-                QByteArray msg = mBuffer.mid(mParserStartOffset * 2, 2*(mParserOffset - mParserStartOffset));
-                QString s = QTextCodec::codecForName("UTF-16BE")->toUnicode(msg);
-                QJsonObject obj = QJsonDocument::fromJson(s.toUtf8()).object();
-                if (!obj.isEmpty())
-                    emit objectReceived(obj);
-                mBuffer = mBuffer.mid(mParserOffset*2);
-                resetParser();
+                mMessageAvailable = true;
+                return true;
             }
         }
         break;
@@ -238,42 +286,93 @@ void JsonBuffer::processMessages()
         for (  ; 2 * mParserOffset < mBuffer.size() ; mParserOffset++ ) {
             int16_t c = qFromLittleEndian(reinterpret_cast<const int16_t *>(mBuffer.constData())[mParserOffset]);
             if (scanUtf(c)) {
-                QByteArray msg = mBuffer.mid(mParserStartOffset * 2, 2*(mParserOffset - mParserStartOffset));
-                QString s = QTextCodec::codecForName("UTF-16LE")->toUnicode(msg);
-                QJsonObject obj = QJsonDocument::fromJson(s.toUtf8()).object();
-                if (!obj.isEmpty())
-                    emit objectReceived(obj);
-                mBuffer = mBuffer.mid(mParserOffset*2);
-                resetParser();
+                mMessageAvailable = true;
+                return true;
             }
         }
         break;
     case FormatBSON:
-        while (mBuffer.size() >= 8) {
-            qint32 message_size = qFromLittleEndian(((qint32 *)mBuffer.data())[1]);
-            if (mBuffer.size() < message_size + 4)
-                break;
-            QByteArray msg = mBuffer.mid(4, message_size);
-            QJsonObject obj = QJsonDocument::fromVariant(BsonObject(msg).toMap()).object();
-            if (!obj.isEmpty())
-                emit objectReceived(obj);
-            mBuffer = mBuffer.mid(message_size+4);
+        if (mBuffer.size() >= 8) {
+            qint32 message_size = qFromLittleEndian(((qint32 *)mBuffer.constData())[1]);
+            if (mBuffer.size() >= message_size + 4) {
+                mMessageSize = message_size;
+                mMessageAvailable = true;
+            }
         }
         break;
     case FormatQBJS:
-        while (mBuffer.size() >= 12) {
+        if (mBuffer.size() >= 12) {
             // ### TODO: Should use 'sizeof(Header)'
-            qint32 message_size = qFromLittleEndian(((qint32 *)mBuffer.data())[2]) + 8;
-            if (mBuffer.size() < message_size)
-                break;
-            QByteArray msg = mBuffer.left(message_size);
-            QJsonObject obj = QJsonDocument::fromBinaryData(msg).object();
-            if (!obj.isEmpty())
-                emit objectReceived(obj);
-            mBuffer = mBuffer.mid(message_size);
+            qint32 message_size = qFromLittleEndian(((qint32 *)mBuffer.constData())[2]) + 8;
+            if (mBuffer.size() >= message_size) {
+                mMessageSize = message_size;
+                mMessageAvailable = true;
+            }
         }
         break;
     }
+    return mMessageAvailable;
+}
+
+/*!
+  \internal
+*/
+QJsonObject JsonBuffer::readMessage()
+{
+    QJsonObject obj;
+    if (messageAvailable()) {
+        switch (mFormat) {
+        case FormatUndefined:
+            break;
+        case FormatUTF8:
+            if (mParserStartOffset >= 0) {
+                QByteArray msg = rawData(mParserStartOffset, mParserOffset - mParserStartOffset);
+                obj = QJsonDocument::fromJson(msg).object();
+                // prepare for the next
+                mBuffer.remove(0, mParserOffset);
+                resetParser();
+            }
+            break;
+        case FormatUTF16BE:
+            if (mParserStartOffset >= 0) {
+                QByteArray msg = rawData(mParserStartOffset * 2, 2*(mParserOffset - mParserStartOffset));
+                QString s = QTextCodec::codecForName("UTF-16BE")->toUnicode(msg);
+                obj = QJsonDocument::fromJson(s.toUtf8()).object();
+                // prepare for the next
+                mBuffer.remove(0, mParserOffset*2);
+                resetParser();
+            }
+            break;
+        case FormatUTF16LE:
+            if (mParserStartOffset >= 0) {
+                QByteArray msg = rawData(mParserStartOffset * 2, 2*(mParserOffset - mParserStartOffset));
+                QString s = QTextCodec::codecForName("UTF-16LE")->toUnicode(msg);
+                obj = QJsonDocument::fromJson(s.toUtf8()).object();
+                // prepare for the next
+                mBuffer.remove(0, mParserOffset*2);
+                resetParser();
+            }
+            break;
+        case FormatBSON:
+            if (mMessageSize > 0) {
+                QByteArray msg = rawData(4, mMessageSize);
+                obj = QJsonDocument::fromVariant(BsonObject(msg).toMap()).object();
+                mBuffer.remove(0, mMessageSize+4);
+                mMessageSize = 0;
+            }
+            break;
+        case FormatQBJS:
+            if (mMessageSize > 0) {
+                QByteArray msg = rawData(0, mMessageSize);
+                obj = QJsonDocument::fromBinaryData(msg).object();
+                mBuffer.remove(0, mMessageSize);
+                mMessageSize = 0;
+            }
+            break;
+        }
+        mMessageAvailable = false;
+    }
+    return obj;
 }
 
 /*!
@@ -286,9 +385,30 @@ EncodingFormat JsonBuffer::format() const
 }
 
 /*!
-    \fn void JsonBuffer::objectReceived(const QJsonObject& object)
-    This signal is emitted when a new Qt Binary Json \a object has been received on the
-    stream.
+    \fn void JsonBuffer::readyReadMessage()
+
+    This signal is emitted once every time new data is appended to the buffer
+    and a message is ready. \b readMessage() should be used to retrieve a message
+    and \b messageAvailable() to check for next available messages.
+    The client code may look like this:
+
+    \code
+    ...
+    connect(jsonbuffer, SIGNAL(readyReadMessage()), this, SLOT(processMessages()));
+    ...
+
+    void Foo::processMessages()
+    {
+        while (jsonbuffer->messageAvailable()) {
+            QJsonObject obj = jsonbuffer->readMessage();
+            <process message>
+        }
+    }
+    \endcode
+
+    \b readyReadMessage() is not emitted recursively; if you reenter the event loop
+    inside a slot connected to the \b readyReadMessage() signal, the signal will not
+    be reemitted.
 */
 
 #include "moc_jsonbuffer_p.cpp"

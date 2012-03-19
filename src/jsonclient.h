@@ -63,7 +63,7 @@ public:
     bool connectTCP(const QString& hostname, int port);
     bool connectLocal(const QString& socketname);
 
-    void send(const QJsonObject&);
+    bool send(const QJsonObject&);
     void setFormat( EncodingFormat format );
 
     // Do we really need a "connect with delay or error" facility?
@@ -75,6 +75,7 @@ signals:
 
 private slots:
     void handleSocketDisconnected();
+    void processMessages();
 
 private:
     Q_DECLARE_PRIVATE(JsonClient)

@@ -64,28 +64,39 @@ public:
     QIODevice *device() const;
     void       setDevice( QIODevice *device );
 
-    void send(const QJsonObject& message);
+    bool send(const QJsonObject& message);
 
     EncodingFormat format() const;
     void           setFormat(EncodingFormat format);
 
+    qint64 readBufferSize() const;
+    void setReadBufferSize(qint64);
+
+    qint64 writeBufferSize() const;
+    void setWriteBufferSize(qint64 sz);
+
+    qint64 bytesToWrite() const;
+
+    bool messageAvailable();
+    QJsonObject readMessage();
+
 signals:
-    void messageReceived(const QJsonObject& message);
+    void bytesWritten(qint64);
+    void readyReadMessage();
     void aboutToClose();
+    void readBufferOverflow(qint64);
 
 protected slots:
     void dataReadyOnSocket();
-    void objectReceived(const QJsonObject& object);
+    void messageReceived();
 
 protected:
-    void sendInternal(const QByteArray& byteArray);
+    bool sendInternal(const QByteArray& byteArray);
 
 private:
     Q_DECLARE_PRIVATE(JsonStream)
     QScopedPointer<JsonStreamPrivate> d_ptr;
 };
-
-JsonStream& operator<<( JsonStream&, const QJsonObject& );
 
 QT_END_NAMESPACE_JSONSTREAM
 

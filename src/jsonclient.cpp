@@ -136,8 +136,7 @@ bool JsonClient::connectTCP(const QString& hostname, int port)
         connect(&d->mStream, SIGNAL(receive(const QJsonObject&)),
                 this, SIGNAL(receive(const QJsonObject&)));
 
-        d->mStream.send(d->mRegistrationMessage);
-        return true;
+        return d->mStream.send(d->mRegistrationMessage);
     }
 
     return false;
@@ -162,11 +161,9 @@ bool JsonClient::connectLocal(const QString& socketname)
         connect(socket, SIGNAL(disconnected()), SLOT(handleSocketDisconnected()));
         Q_D(JsonClient);
         d->mStream.setDevice(socket);
-        connect(&d->mStream, SIGNAL(messageReceived(const QJsonObject&)),
-                this, SIGNAL(messageReceived(const QJsonObject&)));
+        connect(&d->mStream, SIGNAL(readyReadMessage()), this, SLOT(processMessages()));
         // qDebug() << "Sending local socket registration message" << mRegistrationMessage;
-        d->mStream.send(d->mRegistrationMessage);
-        return true;
+        return d->mStream.send(d->mRegistrationMessage);
     }
     delete socket;
     return false;
@@ -174,16 +171,19 @@ bool JsonClient::connectLocal(const QString& socketname)
 
 /*!
   Send a \a message over the socket.
+  Returns true if the entire message was send/buffered or false otherwise.
 */
 
-void JsonClient::send(const QJsonObject &message)
+bool JsonClient::send(const QJsonObject &message)
 {
+    bool ret = false;
     Q_D(JsonClient);
     if (d->mStream.isOpen()) {
-        d->mStream << message;
+        ret = d->mStream.send(message);
     } else {
         qCritical() << Q_FUNC_INFO << "stream socket is not available";
     }
+    return ret;
 }
 
 /*!
@@ -212,6 +212,19 @@ void JsonClient::handleSocketDisconnected()
     emit disconnected();
 }
 
+
+/*!
+  \internal
+*/
+void JsonClient::processMessages()
+{
+    Q_D(JsonClient);
+    while (d->mStream.messageAvailable()) {
+        QJsonObject obj = d->mStream.readMessage();
+        if (!obj.isEmpty())
+            emit messageReceived(obj);
+    }
+}
 
 /*!
     \fn void JsonClient::messageReceived(const QJsonObject &message)

@@ -142,6 +142,7 @@ public:
     void waitForFinished() {
         if (process->state() == QProcess::Running)
             QVERIFY(process->waitForFinished(5000));
+        QVERIFY(process->exitCode() == 0);
         delete process;
         process = 0;
     }
@@ -173,7 +174,7 @@ class BasicServer : public QObject {
     Q_OBJECT
 
 public:
-    BasicServer(const QString& socketname) : socket(0), stream(0) {
+    BasicServer(const QString& socketname, qint64 _sz = 0) : socket(0), stream(0), readBufferSize(_sz) {
         QLocalServer::removeServer(socketname);
         server = new QLocalServer(this);
         connect(server, SIGNAL(newConnection()), SLOT(handleConnection()));
@@ -186,9 +187,8 @@ public:
         server = NULL;
     }
 
-    void send(const QJsonObject& message) {
-        QVERIFY(stream);
-        stream->send(message);
+    bool send(const QJsonObject& message) {
+        return stream ? stream->send(message) : false;
     }
 
     void waitDisconnect(int timeout=5000) {
@@ -207,15 +207,26 @@ public:
         return stream->format();
     }
 
+    JsonStream   *jsonStream() const { return stream; }
 private slots:
     void handleConnection() {
         socket = server->nextPendingConnection();
         QVERIFY(socket);
         stream = new JsonStream(socket);
         stream->setParent(socket);
+        if (readBufferSize > 0)
+            stream->setReadBufferSize(readBufferSize);
         connect(socket, SIGNAL(disconnected()), SLOT(handleDisconnection()));
-        connect(stream, SIGNAL(messageReceived(const QJsonObject&)),
-                SIGNAL(messageReceived(const QJsonObject&)));
+        connect(stream, SIGNAL(readyReadMessage()), SLOT(processMessages()));
+        connect(stream, SIGNAL(readBufferOverflow(qint64)), SLOT(handleReadBufferOverflow(qint64)));
+    }
+
+    void processMessages() {
+        while (stream->messageAvailable()) {
+            QJsonObject obj = stream->readMessage();
+            if (!obj.isEmpty())
+                emit messageReceived(obj);
+        }
     }
 
     void handleDisconnection() {
@@ -225,13 +236,21 @@ private slots:
         stream = NULL;
     }
 
+    void handleReadBufferOverflow(qint64 sz) {
+        QVERIFY(readBufferSize > 0 && sz > readBufferSize);
+        stream->setReadBufferSize(sz);
+        emit readBufferOverflow(sz);
+    }
+
 signals:
     void messageReceived(const QJsonObject&);
+    void readBufferOverflow(qint64);
 
 private:
     QLocalServer *server;
     QLocalSocket *socket;
     JsonStream   *stream;
+    qint64        readBufferSize;
 };
 
 /****************************/
@@ -253,6 +272,7 @@ private slots:
     void pipeTest();
     void pipeFormatTest();
     void pipeWaitTest();
+    void bufferSizeTest();
 };
 
 void tst_JsonStream::initTestCase()
@@ -417,10 +437,65 @@ void tst_JsonStream::formatTest()
         QVERIFY(object.value("item2").toString() == "This is item 2");
 
         msg.insert("command", QLatin1String("exit"));
-        server.send(msg);
+        QVERIFY(server.send(msg));
         server.waitDisconnect();
         child.waitForFinished();
     }
+}
+
+void tst_JsonStream::bufferSizeTest()
+{
+    QString socketname = "/tmp/tst_socket";
+
+    BasicServer server(socketname, 100);
+    QSignalSpy spy(&server, SIGNAL(messageReceived(const QJsonObject&)));
+    QSignalSpy spy1(&server, SIGNAL(readBufferOverflow(qint64)));
+    QTime stopWatch;
+
+    Child child("testClient/testClient",
+                QStringList() << "-socket" << socketname);
+
+    stopWatch.start();
+    forever {
+        QTestEventLoop::instance().enterLoop(1);
+        if (stopWatch.elapsed() >= 5000)
+            QFAIL("Timed out");
+        if (spy.count())
+            break;
+    }
+    QVERIFY(spy1.count() == 1); // overflow happend only once
+
+    QJsonObject msg = qvariant_cast<QJsonObject>(spy.last().at(0));
+    QVERIFY(msg.value("text").isString() && msg.value("text").toString() == QLatin1String("Standard text"));
+    QVERIFY(msg.value("int").isDouble() && msg.value("int").toDouble() == 100);
+    QVERIFY(msg.value("float").isDouble() && msg.value("float").toDouble() == 100.0);
+    QVERIFY(msg.value("true").isBool() && msg.value("true").toBool() == true);
+    QVERIFY(msg.value("false").isBool() && msg.value("false").toBool() == false);
+    QVERIFY(msg.value("array").isArray());
+    QJsonArray array = msg.value("array").toArray();
+    QVERIFY(array.size() == 3);
+    QVERIFY(array.at(0).toString() == "one");
+    QVERIFY(array.at(1).toString() == "two");
+    QVERIFY(array.at(2).toString() == "three");
+    QVERIFY(msg.value("object").isObject());
+    QJsonObject object = msg.value("object").toObject();
+    QVERIFY(object.value("item1").toString() == "This is item 1");
+    QVERIFY(object.value("item2").toString() == "This is item 2");
+
+    msg.insert("command", QLatin1String("exit"));
+
+    server.jsonStream()->setWriteBufferSize(100);
+    QVERIFY(!server.send(msg));
+
+    QString strLarge(500000, '*');
+    msg.insert("large", strLarge);
+    msg.insert("large_size", strLarge.size());
+    server.jsonStream()->setWriteBufferSize(0);
+    QVERIFY(server.send(msg));
+
+
+    server.waitDisconnect();
+    child.waitForFinished();
 }
 
 void tst_JsonStream::schemaTest()

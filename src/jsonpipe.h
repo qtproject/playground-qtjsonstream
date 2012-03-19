@@ -80,6 +80,7 @@ signals:
     void error(PipeError);
 
 protected slots:
+    void processMessages();
     void objectReceived(const QJsonObject& object);
     void inReady(int fd);
     void outReady(int fd);
