@@ -76,7 +76,25 @@ const QString SchemaError::kErrorPrefixStr = QString::fromLatin1("::");
  */
 
 /*!
-  Creates SchemaError object with specified error code and message.
+  \fn SchemaError::SchemaError()
+
+  Creates an empty schema error object.
+*/
+
+/*!
+  \fn SchemaError::SchemaError(const QJsonObject & data)
+
+  Creates an schema error object pertaining to the JSON object \a data.
+*/
+
+/*!
+  \fn QJsonObject SchemaError::object() const
+
+  Returns the object that the error pertains to.
+*/
+
+/*!
+  Creates SchemaError object with specified error \a code and \a message.
 */
 SchemaError::SchemaError(ErrorCode code, const QString & message)
 {

@@ -45,14 +45,6 @@ The JSON Stream classes implement a client/server framework.
  \li \l{Authority notes}
 \endlist
 
-The JSON Stream classes depend on the Qt Json experimental JSON module.
-This module may be found at http://codreview.qt-project.org under "playground/qtbinaryjson".
-After you download and compile this module, it may be used in any Qt project by adding a
-\code
-QT += json
-\endcode
-line to your .pro file.
-
 \section1 Interfaces
 
 Conceptually, the JSON Stream classes are divided into a generic client (JsonClient),
