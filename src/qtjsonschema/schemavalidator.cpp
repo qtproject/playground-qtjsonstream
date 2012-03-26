@@ -349,7 +349,26 @@ QJsonObject SchemaValidator::_loadFromFile(const QString &filename, SchemaNameIn
 */
 QJsonObject SchemaValidator::_loadFromData(const QByteArray & json, const QString & name, SchemaNameInitialization type)
 {
-    QJsonDocument doc = QJsonDocument::fromJson(json);
+    QJsonParseError err;
+    QJsonDocument doc = QJsonDocument::fromJson(json, &err );
+    if (QJsonParseError::NoError != err.error)
+    {
+        // calculate line and position from file offset
+        int nLine = 0, nPos = 1;
+        if (err.offset > 0) {
+            QByteArray b = QByteArray::fromRawData(json, err.offset);
+            nLine = b.count('\n');
+            nPos = err.offset - b.lastIndexOf('\n');
+            if (nPos > 0)
+                --nPos;
+        }
+        ++nLine;
+
+        QString str;
+        str = QString::fromLatin1("JSON syntax error %1 in line %2 position %3").arg(err.error).arg(nLine).arg(nPos);
+        return makeError(SchemaError::InvalidObject, str);
+    }
+
     QJsonObject schemaObject = doc.object();
 
     //qDebug() << "shemaName " << name << " type= " << type;
@@ -357,7 +376,7 @@ QJsonObject SchemaValidator::_loadFromData(const QByteArray & json, const QStrin
 
     if (doc.isNull() || schemaObject.isEmpty())
     {
-        return makeError(SchemaError::InvalidObject, QStringLiteral("schema data is invalid"));
+        return makeError(SchemaError::InvalidObject, QStringLiteral("schema data can not be empty"));
     }
 
     QJsonObject ret;
