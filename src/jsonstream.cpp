@@ -233,6 +233,12 @@ bool JsonStream::send(const QJsonObject& object)
     case FormatUTF16LE:
         bRet = sendInternal( QTextCodec::codecForName("UTF-16LE")->fromUnicode(QString::fromUtf8(document.toJson())).mid(2) );  // Chop off BOM
         break;
+    case FormatUTF32BE:
+        bRet = sendInternal( QTextCodec::codecForName("UTF-32BE")->fromUnicode(QString::fromUtf8(document.toJson())).mid(4) );  // Chop off BOM
+        break;
+    case FormatUTF32LE:
+        bRet = sendInternal( QTextCodec::codecForName("UTF-32LE")->fromUnicode(QString::fromUtf8(document.toJson())).mid(4) );  // Chop off BOM
+        break;
     case FormatBSON:
     {
         BsonObject bson(document.toVariant().toMap());

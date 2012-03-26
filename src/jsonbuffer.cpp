@@ -51,6 +51,12 @@
 
 QT_BEGIN_NAMESPACE_JSONSTREAM
 
+template <typename T>
+inline bool isjsonws(T c)
+{
+    return c == '\n' || c == ' ' || c == '\t' || c == '\r';
+}
+
 /*!
   \class JsonBuffer
   \brief The JsonBuffer class parses data received into appropriate Json messages
@@ -184,7 +190,6 @@ bool JsonBuffer::scanUtf( int c )
         else if ( c == '}' && mParserDepth > 0 ) {
             mParserDepth -= 1;
             if ( mParserDepth == 0 ) {
-                mParserOffset++;
                 return true;
             }
         }
@@ -242,23 +247,52 @@ bool JsonBuffer::messageAvailable()
         return true;
     }
 
+    if (mBuffer.size() < 4) {
+        // buffer too small for a json message
+        return false;
+    }
+
     if (mFormat == FormatUndefined && mBuffer.size() >= 4) {
         if (strncmp("bson", mBuffer.constData(), 4) == 0)
             mFormat = FormatBSON;
         else if (QJsonDocument::BinaryFormatTag == *((uint *) mBuffer.constData()))
             mFormat = FormatQBJS;
-        else if (mBuffer.at(0) == 0 &&
-                 mBuffer.at(1) != 0 &&
-                 mBuffer.at(2) == 0 &&
-                 mBuffer.at(3) != 0 )
-            mFormat = FormatUTF16BE;
-        else if (mBuffer.at(0) != 0 &&
-                 mBuffer.at(1) == 0 &&
-                 mBuffer.at(2) != 0 &&
-                 mBuffer.at(3) == 0 )
-            mFormat = FormatUTF16LE;
-        else
-            mFormat = FormatUTF8;
+        else {
+            uchar u0 = mBuffer.at(0), u1 = mBuffer.at(1), u2 = mBuffer.at(2), u3 = mBuffer.at(3);
+            // has a BOM?
+            if (u0 == 0xFF && u1 == 0xFE) { // utf-32 le or utf-16 le + BOM
+                mFormat = (u2 == 0 && u3 == 0 ) ? FormatUTF32LE : FormatUTF16LE;
+                mParserOffset++;
+            }
+            else if (u0 == 0xFE && u1 == 0xFF) { // utf16 be + BOM
+                mFormat = FormatUTF16BE;
+                mParserOffset++;
+            }
+            else if (u0 == 0x00 && u1 == 0x00 && u2 == 0xFE && u3 == 0xFF ) { // utf-32 be + BOM
+                mFormat = FormatUTF32BE;
+                mParserOffset++;
+            }
+            else if (u0 == 0xEF && u1 == 0xBB && u2 == 0xBF) { // utf8 + BOM
+                mFormat = FormatUTF8;
+                mParserOffset+=3;
+            }
+            // no BOM
+            else if (u0 == 0 && u1 != 0 && u2 == 0 && u3 != 0 ) {
+                mFormat = FormatUTF16BE;
+            }
+            else if (u0 != 0 && u1 == 0 && u2 != 0 && u3 == 0 ) {
+                mFormat = FormatUTF16LE;
+            }
+            else if (u0 == 0 && u1 == 0 && u2 == 0 && u3 != 0 ) {
+                mFormat = FormatUTF32BE;
+            }
+            else if (u0 != 0 && u1 == 0 && u2 == 0 && u3 == 0 ) {
+                mFormat = FormatUTF32LE;
+            }
+            else {
+                mFormat = FormatUTF8;
+            }
+        }
     }
 
     switch (mFormat) {
@@ -267,27 +301,60 @@ bool JsonBuffer::messageAvailable()
     case FormatUTF8:
         for (  ; mParserOffset < mBuffer.size() ; mParserOffset++ ) {
             char c = mBuffer.at(mParserOffset);
-            if (scanUtf(c)) {
+            if (mMessageAvailable) {
+                if (!isjsonws(c))
+                    break;
+            }
+            else if (scanUtf(c)) {
                 mMessageAvailable = true;
-                return true;
             }
         }
         break;
     case FormatUTF16BE:
         for (  ; 2 * mParserOffset < mBuffer.size() ; mParserOffset++ ) {
             int16_t c = qFromBigEndian(reinterpret_cast<const int16_t *>(mBuffer.constData())[mParserOffset]);
-            if (scanUtf(c)) {
+            if (mMessageAvailable) {
+                if (!isjsonws(c))
+                    break;
+            }
+            else if (scanUtf(c)) {
                 mMessageAvailable = true;
-                return true;
             }
         }
         break;
     case FormatUTF16LE:
         for (  ; 2 * mParserOffset < mBuffer.size() ; mParserOffset++ ) {
             int16_t c = qFromLittleEndian(reinterpret_cast<const int16_t *>(mBuffer.constData())[mParserOffset]);
-            if (scanUtf(c)) {
+            if (mMessageAvailable) {
+                if (!isjsonws(c))
+                    break;
+            }
+            else if (scanUtf(c)) {
                 mMessageAvailable = true;
-                return true;
+            }
+        }
+        break;
+    case FormatUTF32BE:
+        for (  ; 4 * mParserOffset < mBuffer.size() ; mParserOffset++ ) {
+            int32_t c = qFromBigEndian(reinterpret_cast<const int32_t *>(mBuffer.constData())[mParserOffset]);
+            if (mMessageAvailable) {
+                if (!isjsonws(c))
+                    break;
+            }
+            else if (scanUtf(c)) {
+                mMessageAvailable = true;
+            }
+        }
+        break;
+    case FormatUTF32LE:
+        for (  ; 4 * mParserOffset < mBuffer.size() ; mParserOffset++ ) {
+            int32_t c = qFromLittleEndian(reinterpret_cast<const int32_t *>(mBuffer.constData())[mParserOffset]);
+            if (mMessageAvailable) {
+                if (!isjsonws(c))
+                    break;
+            }
+            else if (scanUtf(c)) {
+                mMessageAvailable = true;
             }
         }
         break;
@@ -350,6 +417,26 @@ QJsonObject JsonBuffer::readMessage()
                 obj = QJsonDocument::fromJson(s.toUtf8()).object();
                 // prepare for the next
                 mBuffer.remove(0, mParserOffset*2);
+                resetParser();
+            }
+            break;
+        case FormatUTF32BE:
+            if (mParserStartOffset >= 0) {
+                QByteArray msg = rawData(mParserStartOffset * 4, 4*(mParserOffset - mParserStartOffset));
+                QString s = QTextCodec::codecForName("UTF-32BE")->toUnicode(msg);
+                obj = QJsonDocument::fromJson(s.toUtf8()).object();
+                // prepare for the next
+                mBuffer.remove(0, mParserOffset*4);
+                resetParser();
+            }
+            break;
+        case FormatUTF32LE:
+            if (mParserStartOffset >= 0) {
+                QByteArray msg = rawData(mParserStartOffset * 4, 4*(mParserOffset - mParserStartOffset));
+                QString s = QTextCodec::codecForName("UTF-32LE")->toUnicode(msg);
+                obj = QJsonDocument::fromJson(s.toUtf8()).object();
+                // prepare for the next
+                mBuffer.remove(0, mParserOffset*4);
                 resetParser();
             }
             break;

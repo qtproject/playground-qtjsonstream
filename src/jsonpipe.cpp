@@ -250,6 +250,12 @@ bool JsonPipe::send(const QJsonObject& object)
     case FormatUTF16LE:
         d->mOutBuffer.append( QTextCodec::codecForName("UTF-16LE")->fromUnicode(QString::fromUtf8(document.toJson())).mid(2) );
         break;
+    case FormatUTF32BE:
+        d->mOutBuffer.append( QTextCodec::codecForName("UTF-32BE")->fromUnicode(QString::fromUtf8(document.toJson())).mid(4) );
+        break;
+    case FormatUTF32LE:
+        d->mOutBuffer.append( QTextCodec::codecForName("UTF-32LE")->fromUnicode(QString::fromUtf8(document.toJson())).mid(4) );
+        break;
     case FormatBSON:
     {
         BsonObject bson(document.toVariant().toMap());

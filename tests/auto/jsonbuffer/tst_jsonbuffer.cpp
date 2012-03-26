@@ -55,7 +55,7 @@ private slots:
 };
 
 
-const char *utf8spaces[] = { "{\"a\":123.0}{\"b\":234}",
+const char *utf8spaces[] = { "{\"a\":123.0}{\"b\":234}\t \r\n", // test for a buffer size
                              "{\"a\": 123}   \n{\"b\"   :234  }  ",
                              "{     \"a\"  : 123.0000}   \n { \"b\"   :234  }  ",
                              "\n    {\"a\": 123}   \n{\"b\"   :234  }  ",
@@ -80,6 +80,9 @@ void tst_JsonBuffer::utf8()
 
         QVERIFY(!buf.messageAvailable());
         QVERIFY(buf.format() == FormatUTF8);
+
+        if (0 == i)
+            QVERIFY(buf.size() == 0); // buffer should be empty at the end
     }
 }
 
@@ -95,7 +98,7 @@ PartialData utf8packets[] = { { "{\"a\":123.0", 0, 0 },
                               { "  \n{\"c\"   :  1000.0  }  ", "c", 1000.0 },
                               { "{\"value\":  ", 0, 0 },
                               { " 1.0", 0, 0 },
-                              { " \t\t\t}", "value", 1.0 }
+                              { " \t\t\t}\t \r\n", "value", 1.0 } // test for a buffer size
 };
 
 void tst_JsonBuffer::utf8extend()
@@ -114,6 +117,7 @@ void tst_JsonBuffer::utf8extend()
         QVERIFY(!buf.messageAvailable());
         QVERIFY(buf.format() == FormatUTF8);
     }
+    QVERIFY(buf.size() == 0); // buffer should be empty at the end
 }
 
 QTEST_MAIN(tst_JsonBuffer)

@@ -170,6 +170,16 @@ private:
 };
 
 /****************************/
+class TestJsonStream : public JsonStream
+{
+public:
+    TestJsonStream(QIODevice *device)
+        : JsonStream(device) {}
+
+    bool sendRaw(const QByteArray& byteArray) { return sendInternal(byteArray); }
+};
+
+/****************************/
 class BasicServer : public QObject {
     Q_OBJECT
 
@@ -194,6 +204,10 @@ public:
         return stream ? stream->send(message) : false;
     }
 
+    bool sendRaw(const QByteArray& buffer) {
+        return stream ? stream->sendRaw(buffer) : false;
+    }
+
     void waitDisconnect(int timeout=5000) {
         QTime stopWatch;
         stopWatch.start();
@@ -215,7 +229,7 @@ private slots:
     void handleConnection() {
         socket = server->nextPendingConnection();
         QVERIFY(socket);
-        stream = new JsonStream(socket);
+        stream = new TestJsonStream(socket);
         stream->setParent(socket);
         if (readBufferSize > 0)
             stream->setReadBufferSize(readBufferSize);
@@ -255,7 +269,7 @@ signals:
 private:
     QLocalServer *server;
     QLocalSocket *socket;
-    JsonStream   *stream;
+    TestJsonStream   *stream;
     qint64        readBufferSize;
     bool          mHandleReadBufOverflow;
 public:
@@ -277,6 +291,7 @@ private slots:
     void authRangeTest();
     void authRangeFail();
     void formatTest();
+    void BOMformatTest();
     void schemaTest();
     void pipeTest();
     void pipeFormatTest();
@@ -397,7 +412,7 @@ void tst_JsonStream::formatTest()
 {
     QString socketname = "/tmp/tst_socket";
 
-    QStringList formats = QStringList() << "qbjs" << "bson" << "utf8" << "utf16be" << "utf16le";
+    QStringList formats = QStringList() << "qbjs" << "bson" << "utf8" << "utf16be" << "utf16le" << "utf32be" << "utf32le";
 
     foreach (const QString& format, formats) {
         BasicServer server(socketname);
@@ -426,6 +441,10 @@ void tst_JsonStream::formatTest()
             QVERIFY(server.format() == FormatUTF16BE);
         else if (format == "utf16le")
             QVERIFY(server.format() == FormatUTF16LE);
+        else if (format == "utf32be")
+            QVERIFY(server.format() == FormatUTF32BE);
+        else if (format == "utf32le")
+            QVERIFY(server.format() == FormatUTF32LE);
         else
             QFAIL("Unrecognized format");
 
@@ -448,6 +467,85 @@ void tst_JsonStream::formatTest()
 
         msg.insert("command", QLatin1String("exit"));
         QVERIFY(server.send(msg));
+        server.waitDisconnect();
+        child.waitForFinished();
+    }
+}
+
+void tst_JsonStream::BOMformatTest()
+{
+    QString socketname = "/tmp/tst_socket";
+
+    QStringList formats = QStringList() << "utf8" << "utf16be" << "utf16le" << "utf32be" << "utf32le";
+
+    foreach (const QString& format, formats) {
+        BasicServer server(socketname);
+        QSignalSpy spy(&server, SIGNAL(messageReceived(const QJsonObject&)));
+        QTime stopWatch;
+
+        Child child("testClient/testClient",
+                    QStringList() << "-socket" << socketname << "-format" << format);
+
+        stopWatch.start();
+        forever {
+            QTestEventLoop::instance().enterLoop(1);
+            if (stopWatch.elapsed() >= 5000)
+                QFAIL("Timed out");
+            if (spy.count())
+                break;
+        }
+
+        if (format == "utf8")
+            QVERIFY(server.format() == FormatUTF8);
+        else if (format == "utf16be")
+            QVERIFY(server.format() == FormatUTF16BE);
+        else if (format == "utf16le")
+            QVERIFY(server.format() == FormatUTF16LE);
+        else if (format == "utf32be")
+            QVERIFY(server.format() == FormatUTF32BE);
+        else if (format == "utf32le")
+            QVERIFY(server.format() == FormatUTF32LE);
+        else
+            QFAIL("Unrecognized format");
+
+        QJsonObject msg = qvariant_cast<QJsonObject>(spy.last().at(0));
+        QVERIFY(msg.value("text").isString() && msg.value("text").toString() == QLatin1String("Standard text"));
+        QVERIFY(msg.value("int").isDouble() && msg.value("int").toDouble() == 100);
+        QVERIFY(msg.value("float").isDouble() && msg.value("float").toDouble() == 100.0);
+        QVERIFY(msg.value("true").isBool() && msg.value("true").toBool() == true);
+        QVERIFY(msg.value("false").isBool() && msg.value("false").toBool() == false);
+        QVERIFY(msg.value("array").isArray());
+        QJsonArray array = msg.value("array").toArray();
+        QVERIFY(array.size() == 3);
+        QVERIFY(array.at(0).toString() == "one");
+        QVERIFY(array.at(1).toString() == "two");
+        QVERIFY(array.at(2).toString() == "three");
+        QVERIFY(msg.value("object").isObject());
+        QJsonObject object = msg.value("object").toObject();
+        QVERIFY(object.value("item1").toString() == "This is item 1");
+        QVERIFY(object.value("item2").toString() == "This is item 2");
+
+        msg.insert("command", QLatin1String("exit"));
+
+        QJsonDocument document(msg);
+        QString str(QString::fromUtf8(document.toJson()));
+        const char *codec;
+        if (format == "utf8")
+            codec = "UTF-8";
+        else if (format == "utf16be")
+            codec = "UTF-16BE";
+        else if (format == "utf16le")
+            codec = "UTF-16LE";
+        else if (format == "utf32be")
+            codec = "UTF-32BE";
+        else if (format == "utf32le")
+            codec = "UTF-32LE";
+        else
+            QFAIL("Unrecognized format");
+
+        // send data with BOM prepended
+        QTextCodec::ConverterState state(QTextCodec::DefaultConversion);
+        QVERIFY(server.sendRaw(QTextCodec::codecForName(codec)->fromUnicode(str.constData(), str.length(), &state))); // BOM added
         server.waitDisconnect();
         child.waitForFinished();
     }
@@ -649,7 +747,7 @@ void tst_JsonStream::pipeTest()
 
 void tst_JsonStream::pipeFormatTest()
 {
-    QList<EncodingFormat> formats = QList<EncodingFormat>() << FormatUTF8 << FormatBSON << FormatQBJS << FormatUTF16BE << FormatUTF16LE;
+    QList<EncodingFormat> formats = QList<EncodingFormat>() << FormatUTF8 << FormatBSON << FormatQBJS << FormatUTF16BE << FormatUTF16LE << FormatUTF32BE << FormatUTF32LE;
 
     foreach (EncodingFormat format, formats) {
         Pipes pipes;

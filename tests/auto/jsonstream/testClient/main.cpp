@@ -87,6 +87,10 @@ Container::Container()
         mClient->setFormat(FormatUTF16BE);
     else if (gFormat == "utf16le")
         mClient->setFormat(FormatUTF16LE);
+    else if (gFormat == "utf32be")
+        mClient->setFormat(FormatUTF32BE);
+    else if (gFormat == "utf32le")
+        mClient->setFormat(FormatUTF32LE);
 
     if (!mClient->connectLocal(gSocketname)) {
         qWarning() << "Unable to connect to" << gSocketname;
