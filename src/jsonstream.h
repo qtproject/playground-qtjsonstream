@@ -80,6 +80,18 @@ public:
     bool messageAvailable();
     QJsonObject readMessage();
 
+    enum JsonStreamError
+    {
+        NoError = 0,
+        WriteFailedNoConnection,
+        MaxReadBufferSizeExceeded,
+        MaxWriteBufferSizeExceeded,
+        WriteFailed,
+        WriteFailedReturnedZero
+    };
+
+    JsonStreamError lastError() const;
+
 signals:
     void bytesWritten(qint64);
     void readyReadMessage();

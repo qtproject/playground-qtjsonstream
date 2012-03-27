@@ -174,7 +174,10 @@ class BasicServer : public QObject {
     Q_OBJECT
 
 public:
-    BasicServer(const QString& socketname, qint64 _sz = 0) : socket(0), stream(0), readBufferSize(_sz) {
+    BasicServer(const QString& socketname, qint64 _sz = 0, bool _handleReadBufOverflow = false)
+        : socket(0), stream(0), readBufferSize(_sz)
+        , mHandleReadBufOverflow(_handleReadBufOverflow), mLastError(JsonStream::NoError)
+    {
         QLocalServer::removeServer(socketname);
         server = new QLocalServer(this);
         connect(server, SIGNAL(newConnection()), SLOT(handleConnection()));
@@ -233,12 +236,15 @@ private slots:
         QVERIFY(socket);
         socket->deleteLater();
         socket = NULL;
+        mLastError = stream->lastError();
         stream = NULL;
     }
 
     void handleReadBufferOverflow(qint64 sz) {
-        QVERIFY(readBufferSize > 0 && sz > readBufferSize);
-        stream->setReadBufferSize(sz);
+        if (mHandleReadBufOverflow) {
+            QVERIFY(readBufferSize > 0 && sz > readBufferSize);
+            stream->setReadBufferSize(sz);
+        }
         emit readBufferOverflow(sz);
     }
 
@@ -251,6 +257,9 @@ private:
     QLocalSocket *socket;
     JsonStream   *stream;
     qint64        readBufferSize;
+    bool          mHandleReadBufOverflow;
+public:
+    JsonStream::JsonStreamError mLastError;
 };
 
 /****************************/
@@ -273,6 +282,7 @@ private slots:
     void pipeFormatTest();
     void pipeWaitTest();
     void bufferSizeTest();
+    void bufferMaxReadSizeFailTest();
 };
 
 void tst_JsonStream::initTestCase()
@@ -447,7 +457,7 @@ void tst_JsonStream::bufferSizeTest()
 {
     QString socketname = "/tmp/tst_socket";
 
-    BasicServer server(socketname, 100);
+    BasicServer server(socketname, 100, true);
     QSignalSpy spy(&server, SIGNAL(messageReceived(const QJsonObject&)));
     QSignalSpy spy1(&server, SIGNAL(readBufferOverflow(qint64)));
     QTime stopWatch;
@@ -486,16 +496,43 @@ void tst_JsonStream::bufferSizeTest()
 
     server.jsonStream()->setWriteBufferSize(100);
     QVERIFY(!server.send(msg));
+    QVERIFY(server.jsonStream()->lastError() == JsonStream::MaxWriteBufferSizeExceeded);
 
     QString strLarge(500000, '*');
     msg.insert("large", strLarge);
     msg.insert("large_size", strLarge.size());
     server.jsonStream()->setWriteBufferSize(0);
     QVERIFY(server.send(msg));
-
+    QVERIFY(server.jsonStream()->lastError() == JsonStream::NoError);
 
     server.waitDisconnect();
     child.waitForFinished();
+}
+
+void tst_JsonStream::bufferMaxReadSizeFailTest()
+{
+    QString socketname = "/tmp/tst_socket";
+
+    BasicServer server(socketname, 100);
+    QSignalSpy spy1(&server, SIGNAL(readBufferOverflow(qint64)));
+    QTime stopWatch;
+
+    Child child("testClient/testClient",
+                QStringList() << "-socket" << socketname);
+
+    stopWatch.start();
+    forever {
+        QTestEventLoop::instance().enterLoop(1);
+        if (stopWatch.elapsed() >= 5000)
+            QFAIL("Timed out");
+        if (spy1.count()) {
+            break;
+        }
+    }
+
+    QVERIFY(!server.jsonStream()); //disconnected
+    QVERIFY(spy1.count() == 1); // overflow happend only once
+    QVERIFY(server.mLastError == JsonStream::MaxReadBufferSizeExceeded);
 }
 
 void tst_JsonStream::schemaTest()

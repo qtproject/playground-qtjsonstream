@@ -76,13 +76,15 @@ public:
         : mDevice(0)
         , mFormat(FormatUndefined)
         , mReadBufferSize(0)
-        , mWriteBufferSize(0) {}
+        , mWriteBufferSize(0)
+        , mLastError(JsonStream::NoError) {}
 
     QIODevice       *mDevice;
     JsonBuffer      *mBuffer;
     EncodingFormat   mFormat;
     qint64           mReadBufferSize;
     qint64           mWriteBufferSize;
+    JsonStream::JsonStreamError  mLastError;
 };
 
 /****************************************************************************/
@@ -117,6 +119,31 @@ JsonStream::JsonStream(QIODevice *device)
 
 JsonStream::~JsonStream()
 {
+}
+
+/*!
+     \enum JsonStream::JsonStreamError
+     \value NoError
+        No error has occurred.
+     \value WriteFailedNoConnection
+        Can't write because there is no established connection.
+     \value MaxReadBufferSizeExceeded
+        Maximum read buffer size exceeded. Can't continue and connection will be closed.
+     \value MaxWriteBufferSizeExceeded
+        Maximum write buffer size exceeded. Operation can be retried after write buffer maximum size increase or after data in
+        the buffer will be processed by QIODevice.
+     \value WriteFailed
+         Write error occurred ( QIODevice::write() returned -1 ).
+     \value WriteFailedReturnedZero
+         Write error occurred ( QIODevice::write() returned 0 ).
+ */
+
+/*!
+    Returns the error the last operation produced, or NoError error if the last operation did not produce an error.
+*/
+JsonStream::JsonStreamError JsonStream::lastError() const
+{
+    return d_ptr->mLastError;
 }
 
 /*!
@@ -224,9 +251,11 @@ bool JsonStream::sendInternal(const QByteArray& byteArray)
 {
     Q_D(JsonStream);
     if (!isOpen()) {
+        d->mLastError = WriteFailedNoConnection;
         qWarning() << Q_FUNC_INFO << "No device in JsonStream";
         return false;
     }
+    d->mLastError = NoError;
 
     int nBytes = 0;
     if (d->mWriteBufferSize <= 0 || d->mDevice->bytesToWrite() + byteArray.size() <= d->mWriteBufferSize) {
@@ -234,6 +263,7 @@ bool JsonStream::sendInternal(const QByteArray& byteArray)
             int nWrite = d->mDevice->write( byteArray.constData() + nBytes, nSz);
             if (nWrite <= 0) {
                 // write error
+                d->mLastError = (nWrite < 0 ? WriteFailed : WriteFailedReturnedZero);
                 qWarning() << Q_FUNC_INFO << __LINE__
                            << QString::fromLatin1("Write error. QIODevice::write() returned %1 (%2).")
                               .arg(nWrite).arg(d->mDevice->errorString());
@@ -242,6 +272,10 @@ bool JsonStream::sendInternal(const QByteArray& byteArray)
             nBytes += nWrite;
             nSz -= nWrite;
         }
+    }
+    else
+    {
+        d->mLastError = MaxWriteBufferSizeExceeded;
     }
 
     if (QLocalSocket *socket = qobject_cast<QLocalSocket*>(d->mDevice))
@@ -279,6 +313,7 @@ void JsonStream::messageReceived()
 void JsonStream::dataReadyOnSocket()
 {
     Q_D(JsonStream);
+    d->mLastError = NoError;
     if (d->mReadBufferSize > 0) {
         while (d->mDevice->bytesAvailable() + d->mBuffer->size() > d->mReadBufferSize) {
             // can't fit all data into a read buffer - read a part that fits
@@ -289,6 +324,7 @@ void JsonStream::dataReadyOnSocket()
                 emit readBufferOverflow(d->mDevice->bytesAvailable() + d->mBuffer->size());
                 if (d->mBuffer->size() == d->mReadBufferSize) {
                     // still can't read anything - close connection
+                    d->mLastError = MaxReadBufferSizeExceeded;
                     d->mDevice->close();
                     return;
                 }
