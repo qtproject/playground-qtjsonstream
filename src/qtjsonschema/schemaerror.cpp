@@ -73,6 +73,10 @@ const QString SchemaError::kErrorPrefixStr = QString::fromLatin1("::");
          Schema folder does not exist
      \value InvalidSchemaLoading
          Schema loading errors
+     \value SchemaWrongParamType
+         Schema attribute has an invalid type
+     \value SchemaWrongParamValue
+         Schema attribute has an invalid value
  */
 
 /*!

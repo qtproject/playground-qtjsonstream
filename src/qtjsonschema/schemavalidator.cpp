@@ -479,6 +479,108 @@ QJsonObject SchemaValidator::setSchema(const QString &schemaName, QJsonObject sc
 }
 
 /*!
+    \class SchemaValidator::SchemaNameMatcher
+
+    \brief The SchemaNameMatcher is a base class for schema matching.
+    JSON object validation requires to know an exact schema or otherewise to iterate
+    through all available schema in the \c SchemaValidator validator object.
+    The SchemaNameMatcher class allows to limit this iteration in order to speed up a
+    validation process. \l{SchemaValidator::setSchemaNameMatcher()} should be used to set
+    a matcher for the validator .
+
+    \sa SchemaValidator::setSchemaNameMatcher()
+*/
+
+/*!
+    \fn SchemaValidator::SchemaNameMatcher::SchemaNameMatcher(bool _bCanIndex)
+
+    Constructs a SchemaNameMatcher object.
+    If \a _bCanIndex is true, then the object will index schemas for faster
+    matching by invoking \l{createIndex()} for each available schema.
+
+    \sa createIndex()
+*/
+
+/*!
+    \fn SchemaValidator::SchemaNameMatcher::~SchemaNameMatcher()
+
+    Deletes the \c SchemaNameMatcher object
+*/
+
+/*!
+    \fn SchemaNameMatcher *SchemaValidator::SchemaNameMatcher::clone() const
+
+    Creates a copy of the \c SchemaNameMatcher object.
+*/
+
+/*!
+    \fn bool SchemaValidator::SchemaNameMatcher::canIndex() const
+
+    Returns true if the object can index schemas for faster
+    matching by invoking \l{createIndex()} for each available schema.
+
+    \sa createIndex()
+*/
+
+/*!
+    \fn void SchemaValidator::SchemaNameMatcher::createIndex(const QString &schemaName, const QJsonObject &schema)
+
+    Creates an index for a \a schema named \a schemaName to do a quicker name matching
+*/
+
+/*!
+    \fn QStringList SchemaValidator::SchemaNameMatcher::getExactMatches(const QJsonObject &object)
+
+    Returns a list of names for the schemas that exactly match the specified \a object and can be used
+    for it's validation. Knowing exact schema name allows to skip schema iteration and validate with
+    some schemas only.
+
+    \sa getPossibleMatches()
+*/
+
+/*!
+    \fn QStringList SchemaValidator::SchemaNameMatcher::getPossibleMatches(const QJsonObject &object)
+
+    Returns a list of names for the schemas that probably match the specified \a object and can be used
+    for it's validation after \l{getExactMatches()} validation fail.
+
+    \sa getExactMatches()
+*/
+
+/*!
+    \fn void SchemaValidator::SchemaNameMatcher::reset()
+
+    Resets the object to initial state. This method is called every time a schema is added or removed
+    from SchemaValidator object.
+*/
+
+/*!
+    \class SchemaValidator::SchemaPropertyNameMatcher
+
+    \brief The SchemaPropertyNameMatcher class implements a name matcher for a case when
+    schema name is defined by some property in JSON object
+*/
+
+/*!
+    \fn SchemaValidator::SchemaPropertyNameMatcher::SchemaPropertyNameMatcher(const QString & property)
+
+    Constructs a SchemaPropertyNameMatcher object where \a property defines a schema name in JSON object.
+*/
+
+/*!
+    \fn SchemaNameMatcher *SchemaValidator::SchemaPropertyNameMatcher::clone() const
+
+    Creates a copy of the \c SchemaPropertyNameMatcher object.
+*/
+
+/*!
+    \fn QStringList SchemaValidator::SchemaPropertyNameMatcher::getExactMatches(const QJsonObject &object)
+
+    Returns a list of names for the schemas that exactly match the specified \a object and can be used
+    for it's validation.
+*/
+
+/*!
     \class SchemaValidator::SchemaUniqueKeyNameMatcher
 
     \brief The SchemaUniqueKeyNameMatcher class implements a name matcher when
@@ -492,12 +594,21 @@ public:
     QStringList m_others;
 };
 
+/*!
+    Constructs a SchemaUniqueKeyNameMatcher object where \a key defines a top-level key/property
+    that can be used as a quick index.
+*/
+
 SchemaValidator::SchemaUniqueKeyNameMatcher::SchemaUniqueKeyNameMatcher(const QString & key)
     : SchemaNameMatcher(true)
     , m_key(key)
     , d_ptr(new SchemaUniqueKeyNameMatcherPrivate)
 {
 }
+
+/*!
+    Deletes the \c SchemaUniqueKeyNameMatcher object
+*/
 
 SchemaValidator::SchemaUniqueKeyNameMatcher::~SchemaUniqueKeyNameMatcher()
 {
@@ -506,8 +617,15 @@ SchemaValidator::SchemaUniqueKeyNameMatcher::~SchemaUniqueKeyNameMatcher()
 }
 
 /*!
+    \fn SchemaNameMatcher *SchemaValidator::SchemaUniqueKeyNameMatcher::clone() const
+
+    Creates a copy of the \c SchemaUniqueKeyNameMatcher object.
+*/
+
+/*!
   Creates an index for a \a schema named \a schemaName to do a quicker name matching
 */
+
 void SchemaValidator::SchemaUniqueKeyNameMatcher::createIndex(const QString &schemaName, const QJsonObject & schema)
 {
     if (schema.contains(QStringLiteral("properties"))) {
@@ -536,6 +654,13 @@ void SchemaValidator::SchemaUniqueKeyNameMatcher::createIndex(const QString &sch
     d_ptr->m_others.append(schemaName);
 }
 
+/*!
+    Returns a list of names for the schemas that exactly match the specified \a object and can be used
+    for it's validation.
+
+    \sa getPossibleMatches()
+*/
+
 QStringList SchemaValidator::SchemaUniqueKeyNameMatcher::getExactMatches(const QJsonObject &object)
 {
     QString str(!m_key.isEmpty() && object.contains(m_key) ? object[m_key].toString() : QString::null);
@@ -543,10 +668,23 @@ QStringList SchemaValidator::SchemaUniqueKeyNameMatcher::getExactMatches(const Q
     return !str.isEmpty() && (it = d_ptr->m_items.find(str)) != d_ptr->m_items.end() ? *it : QStringList();
 }
 
-QStringList SchemaValidator::SchemaUniqueKeyNameMatcher::getPossibleMatches(const QJsonObject &)
+/*!
+    Returns a list of names for the schemas that probably match the specified \a object and can be used
+    for it's validation after \l{getExactMatches()} validation fail.
+
+    \sa getExactMatches()
+*/
+
+QStringList SchemaValidator::SchemaUniqueKeyNameMatcher::getPossibleMatches(const QJsonObject &object)
 {
+    Q_UNUSED(object);
     return d_ptr->m_others;
 }
+
+/*!
+    Resets the object to initial state. This method is called every time a schema is added or removed
+    from SchemaValidator object.
+*/
 
 void SchemaValidator::SchemaUniqueKeyNameMatcher::reset()
 {
