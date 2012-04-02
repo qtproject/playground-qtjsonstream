@@ -133,8 +133,7 @@ bool JsonClient::connectTCP(const QString& hostname, int port)
         connect(socket, SIGNAL(disconnected()), SLOT(handleSocketDisconnected()));
         Q_D(JsonClient);
         d->mStream.setDevice(socket);
-        connect(&d->mStream, SIGNAL(receive(const QJsonObject&)),
-                this, SIGNAL(receive(const QJsonObject&)));
+        connect(&d->mStream, SIGNAL(readyReadMessage()), this, SLOT(processMessages()));
 
         return d->mStream.send(d->mRegistrationMessage);
     }
