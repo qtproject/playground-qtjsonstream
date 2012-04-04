@@ -50,7 +50,7 @@
 
 QT_BEGIN_NAMESPACE_JSONSTREAM
 
-class JsonBuffer : public QObject
+class Q_ADDON_JSONSTREAM_EXPORT JsonBuffer : public QObject
 {
     Q_OBJECT
 public:

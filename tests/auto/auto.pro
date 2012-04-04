@@ -1,2 +1,2 @@
 TEMPLATE = subdirs
-SUBDIRS = jsonstream jsonschema
+SUBDIRS = jsonstream jsonschema jsonbuffer
