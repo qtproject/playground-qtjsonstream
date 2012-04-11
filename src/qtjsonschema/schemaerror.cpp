@@ -54,7 +54,17 @@ const QString SchemaError::kErrorPrefixStr = QString::fromLatin1("::");
 
 /*!
     \class SchemaError
-    \brief The SchemaError class lists possible error codes.
+    \brief The SchemaError class details error conditions from parsing or
+    validating JSON objects and schemas.
+
+    The error object includes a code, human-readable message, and the JSON object
+    that caused the error.  It may also include the source file/path of the
+    offending object.
+
+    In the case of loading multiple schema files from a folder, there may be
+    multiple errors.  In this case, each individual error can be found in
+    the subErrors() list.
+
     \sa SchemaError::ErrorCode
  */
 
@@ -62,13 +72,13 @@ const QString SchemaError::kErrorPrefixStr = QString::fromLatin1("::");
      \enum SchemaError::ErrorCode
      \omitvalue NoError
      \value FailedSchemaValidation
-         Object to be created/updated was invalid according to the schema.
+         JSON object failed schema validation
      \value InvalidSchemaOperation
          Error somewhere in the schema itself?
      \value InvalidObject
-         Unable to parse an incoming object
+         The JSON object/schema  could not be parsed.
      \value FailedSchemaFileOpenRead
-         Schema file could not be opened or read from
+         Schema file could not be opened or read.
      \value InvalidSchemaFolder
          Schema folder does not exist
      \value InvalidSchemaLoading
@@ -94,7 +104,8 @@ const QString SchemaError::kErrorPrefixStr = QString::fromLatin1("::");
 /*!
   \fn QJsonObject SchemaError::object() const
 
-  Returns the object that the error pertains to.
+  Returns the JSON object that the error pertains to.  If the error is
+  the result of an attempt to load a schema, the object will be the schema object.
 */
 
 /*!
@@ -123,7 +134,9 @@ QString SchemaError::errorString() const
 }
 
 /*!
-  Returns a source of the last schema error.
+  Returns the source of the last schema error.  This is either a filename
+  or directory path.  In the case where a schema or object is loaded directly from
+  data, this value will be empty.
 */
 QString SchemaError::errorSource() const
 {

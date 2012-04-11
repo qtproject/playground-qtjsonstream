@@ -84,22 +84,40 @@ public:
 /*!
     \class SchemaValidator
 
-    \brief The SchemaValidator class implements JSON Schema Validation API.
+    \brief The SchemaValidator class validates JSON objects against JSON schemas
+
+    SchemaValidator validates JSON objects against JSON schemas.  Schemas are loaded
+    individually from data (loadFromData()), from a file (loadFromFile())
+    or collectively (loadFromFolder()).  Each schema is given a name, which is either
+    specified directly when loading, or derived from the filename of the schema file.
+
+    JSON objects are validated against either a specific named schema or against all
+    schemas.  When validating against all schemas, you can restrict the schemas
+    that are checked by calling setValidationFilter().  Also, you can greatly speed up
+    validation by providing a SchemaNameMatcher object by calling setSchemaNameMatcher().
+    A SchemaNameMatcher quickly reduces the number of schemas that need to be checked,
+    so that most of the time only one schema is checked for a valid object.
+
+    Schema loading and validation methods all return a boolean value indicating
+    whether the operation succeeded.  In the case of failure, call getLastError()
+    to retrieve an object describing the error that occurred.
 */
 
 /*!
      \enum SchemaValidator::SchemaNameInitialization
+
+     Specifies how the schema loading methods should name each loaded schema.
+
      \value UseFilename
-         Initialize schema name (object type) from filename (without extension).
+         Use the file's baseName (file name without extension) as the schema name.
      \value UseParameter
-         Use parameter as a schema name.
+         Interpret the provided string parameter as the schema name.
      \value UseProperty
-         Initialize schema name (object type) from a JSON property with a specified name.
+         Interpret the provided string parameter as a property name.  The value of
+         this property in the schema object will be used as the schema name.
 */
 
 /*!
-    \brief The SchemaValidator class implements JSON Schema Validation API.
-
     Creates a new SchemaValidator with optional \a parent.
 */
 SchemaValidator::SchemaValidator(QObject *parent) :
@@ -117,7 +135,10 @@ SchemaValidator::~SchemaValidator()
 }
 
 /*!
-    Returns a detailed error information about the last schema operation
+    Returns an error information object describing any errors encountered during
+    the last schema operation.
+
+    \sa loadFromData(), loadFromFile(), loadFromFolder(), validateSchema()
 */
 SchemaError SchemaValidator::getLastError() const
 {
@@ -125,7 +146,7 @@ SchemaError SchemaValidator::getLastError() const
 }
 
 /*!
-    Returns true if there are no schemas in the validator
+    Returns true if no schemas have been loaded into the validator, false otherwise.
 */
 bool SchemaValidator::isEmpty() const
 {
@@ -133,7 +154,7 @@ bool SchemaValidator::isEmpty() const
 }
 
 /*!
-    Returns the list of initialized schemas in the validator
+    Returns a list of names of schemas which have been loaded into the validator.
 */
 QStringList SchemaValidator::schemaNames() const
 {
@@ -158,7 +179,7 @@ void SchemaValidator::removeSchema(const QString & name)
 }
 
 /*!
-    Removes all the schemas from the validator
+    Removes all schemas from the validator.
 */
 void SchemaValidator::clear()
 {
@@ -166,8 +187,8 @@ void SchemaValidator::clear()
 }
 
 /*!
-    Schema validation filtering - limit schemas used during validation
-    to schemas which name matches \a filter
+    Limits the schemas which will be used when validating an object to those
+    whose name matches \a filter.  To use all schemas, set an empty filter.
 */
 void SchemaValidator::setValidationFilter(const QRegExp &filter)
 {
@@ -176,9 +197,10 @@ void SchemaValidator::setValidationFilter(const QRegExp &filter)
 }
 
 /*!
-    Sets a \a matcher object which does matching between json object and schema name
-    without doing a full schema validation. This allows to do a validation without
-    iteration through all schemas.
+    Sets \a matcher as a schema name matcher object that will be used when validating
+    JSON objects. A SchemaNameMatcher is designed to quickly reduce the number of
+    schemas that need to be checked, so that most of the time only one schema is checked
+    for a valid object.
 */
 void SchemaValidator::setSchemaNameMatcher(const SchemaNameMatcher &matcher)
 {
@@ -188,12 +210,13 @@ void SchemaValidator::setSchemaNameMatcher(const SchemaNameMatcher &matcher)
 
 
 /*!
-    Supplements a validator object with data from schema files with \a ext extension
-    in \a path folder.
-    Schema name (object type) can be defined by the filename of the schema file or
-    from \a schemaNameProperty property in JSON object.
-    Returns true at success, otherwise getLastError() can be used to access
-    a detailed error information.
+    Load schemas from files in folder specified by \a path.  The files may be restricted to those
+    with extension \a ext.  If \a schemaNameProperty is not empty, it will be used
+    to determine each schema's name, otherwise each file's basename will be used to name
+    the schemas (see SchemaNameInitialization for details).
+
+    Returns true if all schema files were loaded successfully, or false otherwise.  Schema
+    loading error information can be retrieved using getLastError().
 */
 bool SchemaValidator::loadFromFolder(const QString & path, const QString & schemaNameProperty, const QByteArray & ext/*= "json"*/)
 {
@@ -204,9 +227,14 @@ bool SchemaValidator::loadFromFolder(const QString & path, const QString & schem
 }
 
 /*!
-    Supplements a validator object with data from \a filename schema file, using \a type and \a schemaName.
-    Returns true at success, otherwise getLastError() can be used to access
-    a detailed error information.
+    Load a schema from file \a filename.  If \a type is UseFilename, the schema name will be
+    set to the file's baseName.  If \a type is UseParameter, \a schemaName is used as the
+    the schema name.  If \a type is UseProperty, \a schemaName is interpreted as a property
+    name which will be used to extract the schema name from the schema.
+    See SchemaNameInitialization for more details.
+
+    Returns true if the schema file was loaded successfully, or false otherwise.  Schema
+    loading error information can be retrieved using getLastError().
 */
 bool SchemaValidator::loadFromFile(const QString &filename, SchemaNameInitialization type, const QString & schemaName)
 {
@@ -217,9 +245,13 @@ bool SchemaValidator::loadFromFile(const QString &filename, SchemaNameInitializa
 }
 
 /*!
-    Supplements a validator object with data from a QByteArray \a json matching \a name and using \a type.
-    Returns true at success, otherwise getLastError() can be used to access
-    a detailed error information.
+    Load a schema from \a json.  If \a type is UseParameter, \a name is used as the
+    the schema name.  If \a type is UseProperty, \a name is interpreted as a property
+    name which will be used to extract the schema name from the schema.
+    See SchemaNameInitialization for more details.
+
+    Returns true if the schema was loaded successfully, or false otherwise.  Schema
+    loading error information can be retrieved using getLastError().
 */
 bool SchemaValidator::loadFromData(const QByteArray & json, const QString & name, SchemaNameInitialization type)
 {
@@ -303,7 +335,7 @@ QJsonObject SchemaValidator::_loadFromFolder(const QString & path, const QString
 
 /*!
     \internal
-    Supplements a validator object with data from \a filename schema file, using \a type and \a shemaName.
+    Supplements a validator object with data from \a filename schema file, using \a type and \a schemaName.
     Returns empty variant map at success or a map filled with error information otherwise
 */
 QJsonObject SchemaValidator::_loadFromFile(const QString &filename, SchemaNameInitialization type, const QString & shemaName)
@@ -412,9 +444,9 @@ QJsonObject SchemaValidator::_loadFromData(const QByteArray & json, const QStrin
 }
 
 /*!
-    Validates \a object with \a schemaName schema.
-    Returns true at success, otherwise getLastError() can be used to access
-    a detailed error information.
+    Validates \a object using the schema with name \a schemaName.
+    Returns true if the object was validated successfully, or false otherwise.
+    Validation error information can be retrieved using getLastError().
 */
 bool SchemaValidator::validateSchema(const QString &schemaName, const QJsonObject &object)
 {
@@ -424,9 +456,9 @@ bool SchemaValidator::validateSchema(const QString &schemaName, const QJsonObjec
 }
 
 /*!
-    Validates \a object with schemas in the validator.
-    Returns true at success, otherwise getLastError() can be used to access
-    a detailed error information.
+    Validates \a object using all matching schemas in the validator.
+    Returns true if the object was validated successfully, or false otherwise.
+    Validation error information can be retrieved using getLastError().
 */
 bool SchemaValidator::validateSchema(const QJsonObject &object)
 {
@@ -499,13 +531,18 @@ QJsonObject SchemaValidator::setSchema(const QString &schemaName, QJsonObject sc
 
 /*!
     \class SchemaValidator::SchemaNameMatcher
+    \brief The SchemaNameMatcher class is an abstract class that provides schema matching
+    functionality to a SchemaValidator object.
 
-    \brief The SchemaNameMatcher is a base class for schema matching.
-    JSON object validation requires to know an exact schema or otherewise to iterate
-    through all available schema in the \c SchemaValidator validator object.
-    The SchemaNameMatcher class allows to limit this iteration in order to speed up a
-    validation process. \l{SchemaValidator::setSchemaNameMatcher()} should be used to set
-    a matcher for the validator .
+    Without schema matching, validating a JSON object involves possibly checking
+    every single schema until one matches.  Schema matching allows the validator to
+    reduce the number of possible schema checks.  The getExactMatches() method returns
+    names schemas that definitely match a given JSON object (based on the criteria
+    that a particular subclass is trying to enforce).  These schemas will be checked
+    first, and if the object is successfully validated by one of these schemas, validation
+    is successful.  If no exact match was validated, the getPossibleMatches() method
+    returns any other schemas that may match a given JSON object.  These schemas will
+    then be checked.
 
     \sa SchemaValidator::setSchemaNameMatcher()
 */
@@ -514,8 +551,9 @@ QJsonObject SchemaValidator::setSchema(const QString &schemaName, QJsonObject sc
     \fn SchemaValidator::SchemaNameMatcher::SchemaNameMatcher(bool _bCanIndex)
 
     Constructs a SchemaNameMatcher object.
-    If \a _bCanIndex is true, then the object will index schemas for faster
-    matching by invoking \l{createIndex()} for each available schema.
+    \a _bCanIndex specifies whether this matcher object can index schemas for faster
+    matching.  In practice, this means that createIndex() will be called each time
+    a new schema is loaded into the validator.
 
     \sa createIndex()
 */
@@ -535,8 +573,8 @@ QJsonObject SchemaValidator::setSchema(const QString &schemaName, QJsonObject sc
 /*!
     \fn bool SchemaValidator::SchemaNameMatcher::canIndex() const
 
-    Returns true if the object can index schemas for faster
-    matching by invoking \l{createIndex()} for each available schema.
+    Returns true if the schema matcher can index schemas for faster
+    matching by invoking createIndex() for each available schema.
 
     \sa createIndex()
 */
@@ -544,15 +582,16 @@ QJsonObject SchemaValidator::setSchema(const QString &schemaName, QJsonObject sc
 /*!
     \fn void SchemaValidator::SchemaNameMatcher::createIndex(const QString &schemaName, const QJsonObject &schema)
 
-    Creates an index for a \a schema named \a schemaName to do a quicker name matching
+    This method should create an internal index for a \a schema named \a schemaName
+    so that later calls to getExactMatches() and getPossibleMatches() can complete faster.
 */
 
 /*!
     \fn QStringList SchemaValidator::SchemaNameMatcher::getExactMatches(const QJsonObject &object)
 
     Returns a list of names for the schemas that exactly match the specified \a object and can be used
-    for it's validation. Knowing exact schema name allows to skip schema iteration and validate with
-    some schemas only.
+    for its validation. Knowing exact schema name allows the SchemaValidator to optimize validation
+    by checking the most likely matching schemas first.
 
     \sa getPossibleMatches()
 */
@@ -560,8 +599,8 @@ QJsonObject SchemaValidator::setSchema(const QString &schemaName, QJsonObject sc
 /*!
     \fn QStringList SchemaValidator::SchemaNameMatcher::getPossibleMatches(const QJsonObject &object)
 
-    Returns a list of names for the schemas that probably match the specified \a object and can be used
-    for it's validation after \l{getExactMatches()} validation fail.
+    Returns a list of names for the schemas that could match the specified \a object and can be used
+    for its validation if validation using exact schema matches fails.
 
     \sa getExactMatches()
 */
@@ -576,14 +615,33 @@ QJsonObject SchemaValidator::setSchema(const QString &schemaName, QJsonObject sc
 /*!
     \class SchemaValidator::SchemaPropertyNameMatcher
 
-    \brief The SchemaPropertyNameMatcher class implements a name matcher for a case when
-    schema name is defined by some property in JSON object
+    \brief The SchemaPropertyNameMatcher class implements a name matcher for the case when
+    a property in the JSON object contains the name of a schema that should be used to
+    validate the object.
+
+    For example, the JSON object might have a "type" property that specifies the name
+    of the schema to use:
+
+    \code
+    {
+      "type": "rectangle",
+      "width": 10,
+      "height": 20
+    }
+    \endcode
+
+    A SchemaPropertyNameMatcher object would then be created like this:
+
+    \code
+    SchemaPropertyNameMatcher matcher(QString("type"));
+    \endcode
 */
 
 /*!
     \fn SchemaValidator::SchemaPropertyNameMatcher::SchemaPropertyNameMatcher(const QString & property)
 
-    Constructs a SchemaPropertyNameMatcher object where \a property defines a schema name in JSON object.
+    Constructs a SchemaPropertyNameMatcher object where \a property specifies a property
+    in a JSON object that contains a schema name that should be used to validate the object.
 */
 
 /*!
@@ -596,14 +654,37 @@ QJsonObject SchemaValidator::setSchema(const QString &schemaName, QJsonObject sc
     \fn QStringList SchemaValidator::SchemaPropertyNameMatcher::getExactMatches(const QJsonObject &object)
 
     Returns a list of names for the schemas that exactly match the specified \a object and can be used
-    for it's validation.
+    for its validation. Knowing exact schema name allows the SchemaValidator to optimize validation
+    by checking the most likely matching schemas first.
 */
 
 /*!
     \class SchemaValidator::SchemaUniqueKeyNameMatcher
 
-    \brief The SchemaUniqueKeyNameMatcher class implements a name matcher when
-    schema contains a uniquely defined top-level key/property that can be used as a quick index
+    \brief The SchemaUniqueKeyNameMatcher class implements a schema name matcher for
+    the case where schemas contains a uniquely defined top-level key/property pairs
+    that can be used as a quick index for exact matching schemas.
+
+    For example, a schema might look like this:
+
+    \code
+    {
+      "title": "My Schema",
+      "type": "object",
+      "properties": {
+        "objectType": {
+          "type": "string",
+          "required": true,
+          "pattern": "objectTypeNumberOne"
+        },
+
+        [other properties]
+      }
+    \endcode
+
+    Because the "objectType" property is required and has an explicit pattern, it is
+    considered unique and the existence of this property/value pair in a JSON object
+    will cause an exact match.
 */
 
 class SchemaValidator::SchemaUniqueKeyNameMatcher::SchemaUniqueKeyNameMatcherPrivate
@@ -614,8 +695,9 @@ public:
 };
 
 /*!
-    Constructs a SchemaUniqueKeyNameMatcher object where \a key defines a top-level key/property
-    that can be used as a quick index.
+    Constructs a SchemaUniqueKeyNameMatcher object for the case where schemas contains
+    a uniquely defined top-level \a key /property pairs that can be used as a quick index
+    for exact matching schemas.
 */
 
 SchemaValidator::SchemaUniqueKeyNameMatcher::SchemaUniqueKeyNameMatcher(const QString & key)
@@ -642,7 +724,8 @@ SchemaValidator::SchemaUniqueKeyNameMatcher::~SchemaUniqueKeyNameMatcher()
 */
 
 /*!
-  Creates an index for a \a schema named \a schemaName to do a quicker name matching
+  Creates an index for a \a schema named \a schemaName so later calls to
+  getExactMatches() and getPossibleMatches() can complete faster.
 */
 
 void SchemaValidator::SchemaUniqueKeyNameMatcher::createIndex(const QString &schemaName, const QJsonObject & schema)
@@ -675,7 +758,8 @@ void SchemaValidator::SchemaUniqueKeyNameMatcher::createIndex(const QString &sch
 
 /*!
     Returns a list of names for the schemas that exactly match the specified \a object and can be used
-    for it's validation.
+    for its validation. Knowing exact schema name allows the SchemaValidator to optimize validation
+    by checking the most likely matching schemas first.
 
     \sa getPossibleMatches()
 */
@@ -688,8 +772,8 @@ QStringList SchemaValidator::SchemaUniqueKeyNameMatcher::getExactMatches(const Q
 }
 
 /*!
-    Returns a list of names for the schemas that probably match the specified \a object and can be used
-    for it's validation after \l{getExactMatches()} validation fail.
+    Returns a list of names for the schemas that could match the specified \a object and can be used
+    for its validation if validation using exact schema matches fails.
 
     \sa getExactMatches()
 */
