@@ -106,6 +106,10 @@ protected:
     bool sendInternal(const QByteArray& byteArray);
 
 private:
+    friend class JsonConnectionProcessor;
+    void setThreadProtection(bool) const;
+
+private:
     Q_DECLARE_PRIVATE(JsonStream)
     QScopedPointer<JsonStreamPrivate> d_ptr;
 };

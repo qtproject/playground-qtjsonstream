@@ -39,76 +39,49 @@
 **
 ****************************************************************************/
 
-#ifndef _JSON_BUFFER_H
-#define _JSON_BUFFER_H
+#ifndef _JSON_ENDPOINT_MANAGER_H
+#define _JSON_ENDPOINT_MANAGER_H
 
 #include <QObject>
-#include <QByteArray>
-#include <QJsonObject>
-#include <QMutex>
-
+#include <QHash>
 #include "jsonstream-global.h"
 
-class QMutexLocker;
+class QJsonObject;
 
 QT_BEGIN_NAMESPACE_JSONSTREAM
 
-class Q_ADDON_JSONSTREAM_EXPORT JsonBuffer : public QObject
+class JsonEndpoint;
+class JsonConnection;
+
+class JsonEndpointManagerPrivate;
+class Q_ADDON_JSONSTREAM_EXPORT JsonEndpointManager : public QObject
 {
     Q_OBJECT
+    Q_PROPERTY(QString endpointPropertyName READ endpointPropertyName WRITE setEndpointPropertyName)
 public:
-    JsonBuffer(QObject *parent=0);
-    void append(const QByteArray& data);
-    void append(const char* data, int len);
-    int  copyFromFd(int fd);
+    JsonEndpointManager(JsonConnection *parent);
+    ~JsonEndpointManager();
+
+    JsonEndpoint *defaultEndpoint();
+
+    QString endpointPropertyName() const { return mEndpointPropertyName; }
+    void setEndpointPropertyName(const QString & name) { mEndpointPropertyName = name; }
+
+    void addEndpoint(JsonEndpoint *);
+    void removeEndpoint(JsonEndpoint *);
     void clear();
 
-    EncodingFormat  format() const;
+    QHash<QString, JsonEndpoint*> & endpoints();
 
-    bool messageAvailable();
-    QJsonObject readMessage();
-
-    int size() const { return mBuffer.size(); }
-
-    inline bool isEnabled() const { return mEnabled; }
-    inline void setEnabled(bool enable) { mEnabled = enable; }
-
-    inline void setThreadProtection(bool enable) { mThreadProtection = enable; }
-
-signals:
-    void readyReadMessage();
+    virtual JsonEndpoint *endpoint(const QJsonObject &);
 
 protected:
-    QMutexLocker *createLocker();
-
-private:
-    void processMessages();
-    bool scanUtf(int c);
-    void resetParser();
-    QByteArray rawData(int _start, int _len) const;
-
-private:
-    enum UTF8ParsingState { ParseNormal, ParseInString, ParseInBackslash };
-
-    EncodingFormat   mFormat;
-    QByteArray       mBuffer;
-    UTF8ParsingState mParserState;
-    int              mParserDepth;
-    int              mParserOffset;
-    int              mParserStartOffset;
-    bool             mEmittedReadyRead;
-    bool             mMessageAvailable;
-    int              mMessageSize;
-    bool             mEnabled;
-    bool             mThreadProtection;
-    QMutex           mMutex;
+    bool mInit;
+    QString mEndpointPropertyName;
+    QHash<QString, JsonEndpoint*> mEndpoints;
+    JsonEndpoint *mDefaultEndpoint;
 };
-
-inline QByteArray JsonBuffer::rawData(int _start, int _len) const
-{
-    return QByteArray::fromRawData(mBuffer.constData() + _start, _len);
-}
 
 QT_END_NAMESPACE_JSONSTREAM
 
-#endif  // _JSON_BUFFER_H
+#endif // _JSON_ENDPOINT_MANAGER_H

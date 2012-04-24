@@ -43,6 +43,7 @@
 #include <QtEndian>
 #include <QJsonDocument>
 #include <QTextCodec>
+#include <QMutexLocker>
 
 #include "jsonbuffer_p.h"
 #include "qjsondocument.h"
@@ -83,6 +84,7 @@ JsonBuffer::JsonBuffer(QObject *parent)
     , mMessageAvailable(false)
     , mMessageSize(0)
     , mEnabled(true)
+    , mThreadProtection(false)
 {
 }
 
@@ -122,7 +124,10 @@ JsonBuffer::JsonBuffer(QObject *parent)
 
 void JsonBuffer::append(const QByteArray& data)
 {
-    mBuffer.append(data.data(), data.size());
+    {
+        QScopedPointer<QMutexLocker> locker(createLocker());
+        mBuffer.append(data.data(), data.size());
+    }
     if (0 < size())
         processMessages();
 }
@@ -135,7 +140,10 @@ void JsonBuffer::append(const QByteArray& data)
 
 void JsonBuffer::append(const char *data, int len)
 {
-    mBuffer.append(data, len);
+    {
+        QScopedPointer<QMutexLocker> locker(createLocker());
+        mBuffer.append(data, len);
+    }
     if (0 < size())
         processMessages();
 }
@@ -152,11 +160,14 @@ void JsonBuffer::append(const char *data, int len)
 int JsonBuffer::copyFromFd(int fd)
 {
     const int maxcopy = 1024;
+    QScopedPointer<QMutexLocker> locker(createLocker());
     uint oldSize = mBuffer.size();
     mBuffer.resize(oldSize + maxcopy);
     int n = ::read(fd, mBuffer.data()+oldSize, maxcopy);
     if (n > 0) {
         mBuffer.resize(oldSize+n);
+        if (!locker.isNull())
+            locker->unlock();
         processMessages();
     }
     else
@@ -170,6 +181,7 @@ int JsonBuffer::copyFromFd(int fd)
 
 void JsonBuffer::clear()
 {
+    QScopedPointer<QMutexLocker> locker(createLocker());
     mBuffer.clear();
     resetParser();
 }
@@ -242,6 +254,7 @@ void JsonBuffer::processMessages()
 */
 bool JsonBuffer::messageAvailable()
 {
+    QScopedPointer<QMutexLocker> locker(createLocker());
     if (mMessageAvailable) {
         // already found - no need to check again
         return true;
@@ -388,6 +401,7 @@ QJsonObject JsonBuffer::readMessage()
 {
     QJsonObject obj;
     if (messageAvailable()) {
+        QScopedPointer<QMutexLocker> locker(createLocker());
         switch (mFormat) {
         case FormatUndefined:
             break;
@@ -469,6 +483,11 @@ QJsonObject JsonBuffer::readMessage()
 EncodingFormat JsonBuffer::format() const
 {
     return mFormat;
+}
+
+QMutexLocker *JsonBuffer::createLocker()
+{
+    return mThreadProtection ? new QMutexLocker(&mMutex) : 0;
 }
 
 /*!

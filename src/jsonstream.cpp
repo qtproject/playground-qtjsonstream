@@ -192,6 +192,7 @@ void JsonStream::setDevice( QIODevice *device )
         disconnect(d->mDevice, SIGNAL(readyRead()), this, SLOT(dataReadyOnSocket()));
         disconnect(d->mDevice, SIGNAL(bytesWritten(qint64)), this, SIGNAL(bytesWritten(qint64)));
         disconnect(d->mDevice, SIGNAL(aboutToClose()), this, SIGNAL(aboutToClose()));
+        d->mBuffer->clear();
     }
     d->mDevice = device;
     if (device) {
@@ -434,8 +435,17 @@ QJsonObject JsonStream::readMessage()
  */
 bool JsonStream::messageAvailable()
 {
-    Q_D(JsonStream);
+    Q_D(const JsonStream);
     return d->mBuffer->messageAvailable();
+}
+
+/*!
+  internal
+ */
+void JsonStream::setThreadProtection(bool enable) const
+{
+    Q_D(const JsonStream);
+    d->mBuffer->setThreadProtection(enable);
 }
 
 /*! \fn JsonStream::bytesWritten(qint64 bytes)

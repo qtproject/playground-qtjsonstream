@@ -39,76 +39,73 @@
 **
 ****************************************************************************/
 
-#ifndef _JSON_BUFFER_H
-#define _JSON_BUFFER_H
-
-#include <QObject>
-#include <QByteArray>
-#include <QJsonObject>
-#include <QMutex>
+#ifndef _JSON_CONNECTION_PROCESSOR_H
+#define _JSON_CONNECTION_PROCESSOR_H
 
 #include "jsonstream-global.h"
+#include "jsonconnection.h"
 
-class QMutexLocker;
+#include <QLocalSocket>
+#include <QTcpSocket>
+class QJsonObject;
 
 QT_BEGIN_NAMESPACE_JSONSTREAM
 
-class Q_ADDON_JSONSTREAM_EXPORT JsonBuffer : public QObject
+#include <QLocalSocket>
+#include <QTcpSocket>
+
+class JsonEndpoint;
+class JsonEndpointManager;
+
+class JsonConnectionProcessorPrivate;
+class JsonConnectionProcessor : public QObject
 {
     Q_OBJECT
 public:
-    JsonBuffer(QObject *parent=0);
-    void append(const QByteArray& data);
-    void append(const char* data, int len);
-    int  copyFromFd(int fd);
-    void clear();
+    JsonConnectionProcessor();
+    ~JsonConnectionProcessor();
 
-    EncodingFormat  format() const;
+    void setEndpointManager(JsonEndpointManager *);
 
-    bool messageAvailable();
-    QJsonObject readMessage();
-
-    int size() const { return mBuffer.size(); }
-
-    inline bool isEnabled() const { return mEnabled; }
-    inline void setEnabled(bool enable) { mEnabled = enable; }
-
-    inline void setThreadProtection(bool enable) { mThreadProtection = enable; }
+    void setAutoReconnectEnabled(bool enabled);
+    JsonConnection::State state() const;
 
 signals:
+    void stateChanged(JsonConnection::State);
     void readyReadMessage();
+    void disconnected();
+    void bytesWritten(qint64);
+    void readBufferOverflow(qint64);
+    void error(JsonConnection::Error,int,QString);
+
+public slots:
+    bool connectTCP(const QString&,int);
+    bool connectLocal(const QString&);
+    void setFormat(int);
+    void setReadBufferSize(qint64);
+    void setWriteBufferSize(qint64);
+    bool send(QJsonObject message);
+    bool messageAvailable(JsonEndpoint *);
+    QJsonObject readMessage(JsonEndpoint *);
+
+protected slots:
+    void processMessage(JsonEndpoint* = 0);
+    void handleSocketDisconnected();
+    void handleReconnect();
+    void handleSocketError(QAbstractSocket::SocketError);
+    void handleSocketError(QLocalSocket::LocalSocketError);
 
 protected:
-    QMutexLocker *createLocker();
 
 private:
-    void processMessages();
-    bool scanUtf(int c);
-    void resetParser();
-    QByteArray rawData(int _start, int _len) const;
+    Q_DECLARE_PRIVATE(JsonConnectionProcessor)
+    QScopedPointer<JsonConnectionProcessorPrivate> d_ptr;
 
-private:
-    enum UTF8ParsingState { ParseNormal, ParseInString, ParseInBackslash };
-
-    EncodingFormat   mFormat;
-    QByteArray       mBuffer;
-    UTF8ParsingState mParserState;
-    int              mParserDepth;
-    int              mParserOffset;
-    int              mParserStartOffset;
-    bool             mEmittedReadyRead;
-    bool             mMessageAvailable;
-    int              mMessageSize;
-    bool             mEnabled;
-    bool             mThreadProtection;
-    QMutex           mMutex;
+    // forbid copy constructor
+    JsonConnectionProcessor(const JsonConnectionProcessor &);
+    void operator=(const JsonConnectionProcessor &);
 };
-
-inline QByteArray JsonBuffer::rawData(int _start, int _len) const
-{
-    return QByteArray::fromRawData(mBuffer.constData() + _start, _len);
-}
 
 QT_END_NAMESPACE_JSONSTREAM
 
-#endif  // _JSON_BUFFER_H
+#endif // _JSON_CONNECTION_PROCESSOR_H
