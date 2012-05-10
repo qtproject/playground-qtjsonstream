@@ -1,10 +1,8 @@
 /****************************************************************************
 **
-** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
-**
-** This file is part of the QtAddOn.JsonStream module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
 ** GNU Lesser General Public License Usage
@@ -39,48 +37,54 @@
 **
 ****************************************************************************/
 
-#include "tst_jsonclient.h"
+#ifndef SCHEMAMANAGER_P_H
+#define SCHEMAMANAGER_P_H
 
-#include <QtTest/QtTest>
+#include <QtCore/qstring.h>
+#include <QtCore/qpair.h>
+#include <QtCore/qmap.h>
 
-tst_JsonClient::tst_JsonClient(const QString& socketname, const QString& strMsg)
-    : mMsg(strMsg)
+#include "schemaobject_p.h"
+
+#include "qjsonschema-global.h"
+
+QT_BEGIN_NAMESPACE_JSONSTREAM
+
+class SchemaManagerBase
 {
-    qDebug() << Q_FUNC_INFO;
 
-    mClient = new QJsonClient;
-    connect(mClient, SIGNAL(messageReceived(const QJsonObject&)),
-        this, SLOT(messageReceived(const QJsonObject&)));
-    mSpyMessageReceived = new QSignalSpy(mClient, SIGNAL(messageReceived(const QJsonObject&)));
+};
 
-    qWarning() << "Connecting to " << socketname;
-    QVERIFY(mClient->connectLocal(socketname));
-
-    QJsonObject msg;
-    msg.insert("note", mMsg);
-
-    qDebug() << "Sending message: " << mMsg;
-    mClient->send(msg);
-}
-
-tst_JsonClient::~tst_JsonClient()
+//FIXME This can have better performance
+template<class T, class TT>
+class SchemaManager : public SchemaManagerBase
 {
-    qDebug() << Q_FUNC_INFO;
+public:
+    typedef typename TT::Service TypesService;
 
-    delete mClient;
+    inline bool contains(const QString &name) const;
+    inline T value(const QString &name) const;
+    inline SchemaValidation::Schema<TT> schema(const QString &name, TypesService *service);
+    inline T take(const QString &name);
+    inline T insert(const QString &name, T &schema);
 
-    delete mSpyMessageReceived;
-}
+    inline T validate(const QString &schemaName, T object);
 
+    QStringList names() const { return m_schemas.keys(); }
+    inline QMap<QString, T> schemas() const;
 
-void tst_JsonClient::messageReceived(const QJsonObject& message)
-{
-    qDebug() << Q_FUNC_INFO;
+    bool isEmpty() const { return m_schemas.isEmpty(); }
+    void clear() { m_schemas.clear(); }
 
-    QString str = message.value("note").toString();
-    qDebug() << "Received" << message << str;
+private:
+    typedef QPair<T, SchemaValidation::Schema<TT> > MapSchemaPair;
+    inline T ensureCompiled(const QString &schemaName, MapSchemaPair *pair, TypesService *service);
 
-    QVERIFY(str == mMsg);
+    QMap<QString, MapSchemaPair> m_schemas;
+};
 
-    deleteLater();
-}
+QT_END_NAMESPACE_JSONSTREAM
+
+#include "schemamanager_impl_p.h"
+
+#endif // SCHEMAMANAGER_P_H

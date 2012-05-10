@@ -50,8 +50,8 @@
 #include <QTimer>
 #include <QFile>
 
-#include "jsonstream.h"
-#include "jsonserver.h"
+#include "qjsonstream.h"
+#include "qjsonserver.h"
 
 QT_USE_NAMESPACE_JSONSTREAM
 
@@ -99,7 +99,7 @@ private slots:
     void handleConnection() {
         socket = server->nextPendingConnection();
         Q_ASSERT(socket);
-        stream = new JsonStream(socket);
+        stream = new QJsonStream(socket);
         stream->setParent(socket);
         connect(socket, SIGNAL(disconnected()), SLOT(handleDisconnection()));
         connect(stream, SIGNAL(readyReadMessage()), SLOT(processMessages()));
@@ -141,7 +141,7 @@ signals:
 private:
     QLocalServer *server;
     QLocalSocket *socket;
-    JsonStream   *stream;
+    QJsonStream   *stream;
 };
 
 class Container : public QObject

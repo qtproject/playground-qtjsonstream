@@ -39,48 +39,57 @@
 **
 ****************************************************************************/
 
-#include "tst_jsonclient.h"
+#ifndef SCHEMAERROR_H
+#define SCHEMAERROR_H
 
-#include <QtTest/QtTest>
+#include "qjsonschema-global.h"
 
-tst_JsonClient::tst_JsonClient(const QString& socketname, const QString& strMsg)
-    : mMsg(strMsg)
+#include <QJsonObject>
+#include <QList>
+
+QT_BEGIN_NAMESPACE_JSONSTREAM
+
+class Q_ADDON_JSONSTREAM_EXPORT QJsonSchemaError
 {
-    qDebug() << Q_FUNC_INFO;
+public:
+    enum ErrorCode {
+        NoError = 0,
+        FailedSchemaValidation, // Invalid according to the schema
+        InvalidSchemaOperation,
+        InvalidObject,              // Unable to parse an incoming object
+        FailedSchemaFileOpenRead,   // Schema file could not be opened or read from
+        InvalidSchemaFolder,        // Schema folder does not exist
+        InvalidSchemaLoading,       // Schema loading errors
 
-    mClient = new QJsonClient;
-    connect(mClient, SIGNAL(messageReceived(const QJsonObject&)),
-        this, SLOT(messageReceived(const QJsonObject&)));
-    mSpyMessageReceived = new QSignalSpy(mClient, SIGNAL(messageReceived(const QJsonObject&)));
+        // Schema Errors
+        SchemaWrongParamType = 100,
+        SchemaWrongParamValue
+    };
 
-    qWarning() << "Connecting to " << socketname;
-    QVERIFY(mClient->connectLocal(socketname));
+    QJsonSchemaError() {}
+    QJsonSchemaError(const QJsonObject & _data) : m_data(_data) {}
+    QJsonSchemaError(ErrorCode, const QString &);
 
-    QJsonObject msg;
-    msg.insert("note", mMsg);
+    ErrorCode errorCode() const;
+    QString errorString() const;
+    QString errorSource() const;
 
-    qDebug() << "Sending message: " << mMsg;
-    mClient->send(msg);
-}
+    QList<QJsonSchemaError> subErrors() const;
 
-tst_JsonClient::~tst_JsonClient()
-{
-    qDebug() << Q_FUNC_INFO;
+    QJsonObject object() const { return m_data; }
 
-    delete mClient;
+    static const QString kCodeStr;
+    static const QString kMessageStr;
+    static const QString kSourceStr;
+    static const QString kCounterStr;
+    static const QString kErrorPrefixStr;
 
-    delete mSpyMessageReceived;
-}
+private:
+    friend Q_ADDON_JSONSTREAM_EXPORT QDebug operator<<(QDebug, const QJsonSchemaError &);
 
+    QJsonObject m_data;
+};
 
-void tst_JsonClient::messageReceived(const QJsonObject& message)
-{
-    qDebug() << Q_FUNC_INFO;
+QT_END_NAMESPACE_JSONSTREAM
 
-    QString str = message.value("note").toString();
-    qDebug() << "Received" << message << str;
-
-    QVERIFY(str == mMsg);
-
-    deleteLater();
-}
+#endif // SCHEMAERROR_H

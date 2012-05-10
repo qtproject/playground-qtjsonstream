@@ -41,7 +41,7 @@
 
 #include <QtTest/QtTest>
 
-#include "schemavalidator.h"
+#include "qjsonschemavalidator.h"
 
 QT_USE_NAMESPACE_JSONSTREAM
 
@@ -103,7 +103,7 @@ private:
 void tst_JsonSchema::schemaTest()
 {
     bool result;
-    SchemaValidator validator;
+    QJsonSchemaValidator validator;
 
     // test SchemaValidator::schemaNames() and SchemaValidator::hasSchema() with empty object
     QVERIFY(validator.schemaNames().isEmpty());
@@ -135,7 +135,7 @@ void tst_JsonSchema::schemaTest()
 
     result = validator.validateSchema("SchemaTestObject", noncompliant);
     //qDebug() << "INVALID validation result: " << result << " message is:" << validator.getLastError().errorString();
-    QVERIFY(!result && validator.getLastError().errorCode() == SchemaError::FailedSchemaValidation);
+    QVERIFY(!result && validator.getLastError().errorCode() == QJsonSchemaError::FailedSchemaValidation);
 
     // test SchemaValidator::removesSchema()
     validator.removeSchema("SchemaTestObject");
@@ -523,7 +523,7 @@ bool tst_JsonSchema::validate(const QJsonValue & value, const QByteArray & schem
     object.insert("test", value);
     //qDebug() << "object " << object;
 
-    SchemaValidator validator;
+    QJsonSchemaValidator validator;
 
     // wrap schema body
     QByteArray schema = QString("{ \"properties\": { \"test\": %1 } }").arg(schemaBody.constData()).toUtf8();

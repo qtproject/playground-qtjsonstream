@@ -39,48 +39,52 @@
 **
 ****************************************************************************/
 
-#include "tst_jsonclient.h"
+#ifndef _JSON_ENDPOINT_MANAGER_H
+#define _JSON_ENDPOINT_MANAGER_H
 
-#include <QtTest/QtTest>
+#include <QObject>
+#include <QHash>
+#include "qjsonstream-global.h"
 
-tst_JsonClient::tst_JsonClient(const QString& socketname, const QString& strMsg)
-    : mMsg(strMsg)
+class QJsonObject;
+
+QT_BEGIN_NAMESPACE_JSONSTREAM
+
+class QJsonEndpoint;
+class QJsonConnection;
+
+class QJsonEndpointManagerPrivate;
+class Q_ADDON_JSONSTREAM_EXPORT QJsonEndpointManager : public QObject
 {
-    qDebug() << Q_FUNC_INFO;
+    Q_OBJECT
+    Q_PROPERTY(QString endpointPropertyName READ endpointPropertyName WRITE setEndpointPropertyName)
+public:
+    QJsonEndpointManager(QJsonConnection *parent);
+    ~QJsonEndpointManager();
 
-    mClient = new QJsonClient;
-    connect(mClient, SIGNAL(messageReceived(const QJsonObject&)),
-        this, SLOT(messageReceived(const QJsonObject&)));
-    mSpyMessageReceived = new QSignalSpy(mClient, SIGNAL(messageReceived(const QJsonObject&)));
+    QJsonEndpoint *defaultEndpoint();
 
-    qWarning() << "Connecting to " << socketname;
-    QVERIFY(mClient->connectLocal(socketname));
+    QString endpointPropertyName() const { return mEndpointPropertyName; }
+    void setEndpointPropertyName(const QString & name) { mEndpointPropertyName = name; }
 
-    QJsonObject msg;
-    msg.insert("note", mMsg);
+    void addEndpoint(QJsonEndpoint *);
+    void removeEndpoint(QJsonEndpoint *);
+    void clear();
 
-    qDebug() << "Sending message: " << mMsg;
-    mClient->send(msg);
-}
+    QHash<QString, QJsonEndpoint*> & endpoints();
 
-tst_JsonClient::~tst_JsonClient()
-{
-    qDebug() << Q_FUNC_INFO;
+    virtual QJsonEndpoint *endpoint(const QJsonObject &);
 
-    delete mClient;
+protected slots:
+    void handleNameChange();
 
-    delete mSpyMessageReceived;
-}
+protected:
+    bool mInit;
+    QString mEndpointPropertyName;
+    QHash<QString, QJsonEndpoint*> mEndpoints;
+    QJsonEndpoint *mDefaultEndpoint;
+};
 
+QT_END_NAMESPACE_JSONSTREAM
 
-void tst_JsonClient::messageReceived(const QJsonObject& message)
-{
-    qDebug() << Q_FUNC_INFO;
-
-    QString str = message.value("note").toString();
-    qDebug() << "Received" << message << str;
-
-    QVERIFY(str == mMsg);
-
-    deleteLater();
-}
+#endif // _JSON_ENDPOINT_MANAGER_H

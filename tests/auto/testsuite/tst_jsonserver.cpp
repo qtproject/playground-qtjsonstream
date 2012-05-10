@@ -102,7 +102,7 @@ void tst_JsonServer::noAuthTest()
 {
     qDebug() << "Running" << Q_FUNC_INFO;
 
-    mServer = new JsonServer;
+    mServer = new QJsonServer;
     connect(mServer, SIGNAL(connectionAdded(const QString&)), this, SLOT(connectionAdded(const QString&)));
     mSpyServerConnectionAdded = new QSignalSpy(mServer, SIGNAL(connectionAdded(const QString&)));
 
@@ -123,7 +123,7 @@ void tst_JsonServer::pidAuthorityTest()
     qDebug() << "Running" << Q_FUNC_INFO;
 
 #ifdef MMM // not implemented
-    JsonPIDAuthority *auth = new JsonPIDAuthority(this);
+    QJsonPIDAuthority *auth = new QJsonPIDAuthority(this);
 
     pid_t clientPid = getpid();
     QString clientId = "pid_auth_tester";
@@ -140,7 +140,7 @@ void tst_JsonServer::pidAuthorityTest()
     QVERIFY(auth->deauthorize(clientPid) == false);
 #endif
 
-    mServer = new JsonServer;
+    mServer = new QJsonServer;
     connect(mServer, SIGNAL(connectionAdded(const QString&)), this, SLOT(connectionAdded(const QString&)));
     mSpyServerConnectionAdded = new QSignalSpy(mServer, SIGNAL(connectionAdded(const QString&)));
 
@@ -160,7 +160,7 @@ void tst_JsonServer::tokenAuthorityTest()
 {
     qDebug() << "Running" << Q_FUNC_INFO;
 
-    JsonTokenAuthority *auth = new JsonTokenAuthority(this);
+    QJsonTokenAuthority *auth = new QJsonTokenAuthority(this);
 
     QString clientId = "token_auth_tester";
     QString clientToken = QUuid::createUuid().toString();
@@ -179,7 +179,7 @@ void tst_JsonServer::tokenAuthorityTest()
 
     QVERIFY(auth->authorize(clientToken, clientId));
 
-    mServer = new JsonServer;
+    mServer = new QJsonServer;
     connect(mServer, SIGNAL(connectionAdded(const QString&)), this, SLOT(connectionAdded(const QString&)));
     mSpyServerConnectionAdded = new QSignalSpy(mServer, SIGNAL(connectionAdded(const QString&)));
 

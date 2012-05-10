@@ -39,48 +39,46 @@
 **
 ****************************************************************************/
 
-#include "tst_jsonclient.h"
+#ifndef JSON_UID_RANGE_AUTHORITY_H
+#define JSON_UID_RANGE_AUTHORITY_H
 
-#include <QtTest/QtTest>
+#include <QHash>
+#include <QLocalSocket>
 
-tst_JsonClient::tst_JsonClient(const QString& socketname, const QString& strMsg)
-    : mMsg(strMsg)
+#include "qjsonauthority.h"
+#include "qjsonstream-global.h"
+
+QT_BEGIN_NAMESPACE_JSONSTREAM
+
+class Q_ADDON_JSONSTREAM_EXPORT QJsonUIDRangeAuthority : public QJsonAuthority
 {
-    qDebug() << Q_FUNC_INFO;
+    Q_OBJECT
+    Q_PROPERTY(int minimum READ minimum WRITE setMinimum NOTIFY minimumChanged)
+    Q_PROPERTY(int maximum READ maximum WRITE setMaximum NOTIFY maximumChanged)
 
-    mClient = new QJsonClient;
-    connect(mClient, SIGNAL(messageReceived(const QJsonObject&)),
-        this, SLOT(messageReceived(const QJsonObject&)));
-    mSpyMessageReceived = new QSignalSpy(mClient, SIGNAL(messageReceived(const QJsonObject&)));
+public:
+    QJsonUIDRangeAuthority(QObject *parent = 0);
 
-    qWarning() << "Connecting to " << socketname;
-    QVERIFY(mClient->connectLocal(socketname));
+    int  minimum() const;
+    void setMinimum(int);
 
-    QJsonObject msg;
-    msg.insert("note", mMsg);
+    int  maximum() const;
+    void setMaximum(int);
 
-    qDebug() << "Sending message: " << mMsg;
-    mClient->send(msg);
-}
+    virtual AuthorizationRecord clientConnected(QJsonStream *stream);
+    virtual AuthorizationRecord messageReceived(QJsonStream *stream, const QJsonObject &message);
 
-tst_JsonClient::~tst_JsonClient()
-{
-    qDebug() << Q_FUNC_INFO;
+signals:
+    void minimumChanged();
+    void maximumChanged();
 
-    delete mClient;
+private:
+    int m_minimum;
+    int m_maximum;
+};
 
-    delete mSpyMessageReceived;
-}
+QT_END_NAMESPACE_JSONSTREAM
 
+QT_JSONSTREAM_DECLARE_METATYPE_PTR(QJsonUIDRangeAuthority)
 
-void tst_JsonClient::messageReceived(const QJsonObject& message)
-{
-    qDebug() << Q_FUNC_INFO;
-
-    QString str = message.value("note").toString();
-    qDebug() << "Received" << message << str;
-
-    QVERIFY(str == mMsg);
-
-    deleteLater();
-}
+#endif // JSON_UID_RANGE_AUTHORITY_H

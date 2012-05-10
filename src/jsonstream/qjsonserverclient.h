@@ -39,48 +39,57 @@
 **
 ****************************************************************************/
 
-#include "tst_jsonclient.h"
+#ifndef _JSON_SERVER_CLIENT_H
+#define _JSON_SERVER_CLIENT_H
 
-#include <QtTest/QtTest>
+#include <QObject>
+#include <QJsonObject>
 
-tst_JsonClient::tst_JsonClient(const QString& socketname, const QString& strMsg)
-    : mMsg(strMsg)
+class QLocalSocket;
+
+#include "qjsonstream-global.h"
+
+QT_BEGIN_NAMESPACE_JSONSTREAM
+
+class QJsonAuthority;
+
+class QJsonServerClientPrivate;
+class Q_ADDON_JSONSTREAM_EXPORT QJsonServerClient : public QObject
 {
-    qDebug() << Q_FUNC_INFO;
+    Q_OBJECT
+public:
+    QJsonServerClient(QObject *parent = 0);
+    ~QJsonServerClient();
 
-    mClient = new QJsonClient;
-    connect(mClient, SIGNAL(messageReceived(const QJsonObject&)),
-        this, SLOT(messageReceived(const QJsonObject&)));
-    mSpyMessageReceived = new QSignalSpy(mClient, SIGNAL(messageReceived(const QJsonObject&)));
+    void start();
+    void stop();
 
-    qWarning() << "Connecting to " << socketname;
-    QVERIFY(mClient->connectLocal(socketname));
+    bool send(const QJsonObject &message);
 
-    QJsonObject msg;
-    msg.insert("note", mMsg);
+    void setAuthority(QJsonAuthority *authority);
 
-    qDebug() << "Sending message: " << mMsg;
-    mClient->send(msg);
-}
+    const QLocalSocket *socket() const;
+    void setSocket(QLocalSocket *socket);
 
-tst_JsonClient::~tst_JsonClient()
-{
-    qDebug() << Q_FUNC_INFO;
+    QString identifier() const;
 
-    delete mClient;
+signals:
+    void disconnected(const QString& identifier);
+    void messageReceived(const QString& identifier, const QJsonObject& message);
 
-    delete mSpyMessageReceived;
-}
+    void authorized(const QString& identifier);
+    void authorizationFailed();
 
+private slots:
+    void received(const QJsonObject& message);
+    void handleDisconnect();
+    void processMessages();
 
-void tst_JsonClient::messageReceived(const QJsonObject& message)
-{
-    qDebug() << Q_FUNC_INFO;
+private:
+    Q_DECLARE_PRIVATE(QJsonServerClient)
+    QScopedPointer<QJsonServerClientPrivate> d_ptr;
+};
 
-    QString str = message.value("note").toString();
-    qDebug() << "Received" << message << str;
+QT_END_NAMESPACE_JSONSTREAM
 
-    QVERIFY(str == mMsg);
-
-    deleteLater();
-}
+#endif // _JSON_SERVER_CLIENT_H

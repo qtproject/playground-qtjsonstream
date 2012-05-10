@@ -41,7 +41,7 @@
 
 #include <QtTest>
 
-#include "private/jsonbuffer_p.h"
+#include "private/qjsonbuffer_p.h"
 
 QT_USE_NAMESPACE_JSONSTREAM
 
@@ -67,7 +67,7 @@ void tst_JsonBuffer::utf8()
 {
     int n = sizeof(utf8spaces) / sizeof(utf8spaces[0]);
     for (int i = 0 ; i < n ; i++ ) {
-        JsonBuffer buf;
+        QJsonBuffer buf;
         buf.append(utf8spaces[i], strlen(utf8spaces[i]));
 
         QVERIFY(buf.messageAvailable());
@@ -103,7 +103,7 @@ PartialData utf8packets[] = { { "{\"a\":123.0", 0, 0 },
 
 void tst_JsonBuffer::utf8extend()
 {
-    JsonBuffer buf;
+    QJsonBuffer buf;
     int n = sizeof(utf8packets) / sizeof(utf8packets[0]);
     for (int i = 0 ; i < n ; i++ ) {
         PartialData& d = utf8packets[i];

@@ -39,48 +39,59 @@
 **
 ****************************************************************************/
 
-#include "tst_jsonclient.h"
+#ifndef _JSON_ENDPOINT_H
+#define _JSON_ENDPOINT_H
 
-#include <QtTest/QtTest>
+#include <QObject>
+#include <QJsonObject>
+#include "qjsonstream-global.h"
 
-tst_JsonClient::tst_JsonClient(const QString& socketname, const QString& strMsg)
-    : mMsg(strMsg)
+QT_BEGIN_NAMESPACE_JSONSTREAM
+
+class QJsonConnection;
+
+class QJsonEndpointPrivate;
+class Q_ADDON_JSONSTREAM_EXPORT QJsonEndpoint : public QObject
 {
-    qDebug() << Q_FUNC_INFO;
+    Q_OBJECT
+    Q_PROPERTY(QString name READ name WRITE setName NOTIFY nameChanged)
+    Q_PROPERTY(QJsonConnection* connection READ connection WRITE setConnection NOTIFY connectionChanged)
+public:
+    QJsonEndpoint(const QString & = QString::null, QJsonConnection * = 0);
+    virtual ~QJsonEndpoint();
 
-    mClient = new QJsonClient;
-    connect(mClient, SIGNAL(messageReceived(const QJsonObject&)),
-        this, SLOT(messageReceived(const QJsonObject&)));
-    mSpyMessageReceived = new QSignalSpy(mClient, SIGNAL(messageReceived(const QJsonObject&)));
+    QString name() const;
+    void    setName( const QString & name );
 
-    qWarning() << "Connecting to " << socketname;
-    QVERIFY(mClient->connectLocal(socketname));
+    QJsonConnection *connection() const;
+    void setConnection(QJsonConnection *);
 
-    QJsonObject msg;
-    msg.insert("note", mMsg);
+    Q_INVOKABLE bool send(const QVariantMap& message);
+    Q_INVOKABLE bool send(const QJsonObject& message);
 
-    qDebug() << "Sending message: " << mMsg;
-    mClient->send(msg);
-}
+    Q_INVOKABLE bool messageAvailable();
 
-tst_JsonClient::~tst_JsonClient()
-{
-    qDebug() << Q_FUNC_INFO;
+    Q_INVOKABLE QJsonObject readMessage();
+    Q_INVOKABLE QVariantMap readMessageMap();
 
-    delete mClient;
+signals:
+    void nameChanged();
+    void connectionChanged();
 
-    delete mSpyMessageReceived;
-}
+    void readyReadMessage();
 
+protected slots:
+    void slotReadyReadMessage();
 
-void tst_JsonClient::messageReceived(const QJsonObject& message)
-{
-    qDebug() << Q_FUNC_INFO;
+private:
+    Q_DECLARE_PRIVATE(QJsonEndpoint)
+    QScopedPointer<QJsonEndpointPrivate> d_ptr;
 
-    QString str = message.value("note").toString();
-    qDebug() << "Received" << message << str;
+    // forbid copy constructor
+    QJsonEndpoint(const QJsonEndpoint &);
+    void operator=(const QJsonEndpoint &);
+};
 
-    QVERIFY(str == mMsg);
+QT_END_NAMESPACE_JSONSTREAM
 
-    deleteLater();
-}
+#endif // _JSON_ENDPOINT_H

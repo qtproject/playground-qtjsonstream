@@ -39,48 +39,81 @@
 **
 ****************************************************************************/
 
-#include "tst_jsonclient.h"
+#ifndef _JSON_STREAM_H
+#define _JSON_STREAM_H
 
-#include <QtTest/QtTest>
+#include <QIODevice>
+#include <QJsonObject>
+#include "qjsonstream-global.h"
 
-tst_JsonClient::tst_JsonClient(const QString& socketname, const QString& strMsg)
-    : mMsg(strMsg)
+QT_BEGIN_NAMESPACE_JSONSTREAM
+
+class QJsonBuffer;
+
+class QJsonStreamPrivate;
+class Q_ADDON_JSONSTREAM_EXPORT QJsonStream : public QObject
 {
-    qDebug() << Q_FUNC_INFO;
+    Q_OBJECT
+public:
+    QJsonStream(QIODevice *device = 0);
+    virtual ~QJsonStream();
 
-    mClient = new QJsonClient;
-    connect(mClient, SIGNAL(messageReceived(const QJsonObject&)),
-        this, SLOT(messageReceived(const QJsonObject&)));
-    mSpyMessageReceived = new QSignalSpy(mClient, SIGNAL(messageReceived(const QJsonObject&)));
+    bool atEnd() const;
+    bool isOpen() const;
 
-    qWarning() << "Connecting to " << socketname;
-    QVERIFY(mClient->connectLocal(socketname));
+    QIODevice *device() const;
+    void       setDevice( QIODevice *device );
 
-    QJsonObject msg;
-    msg.insert("note", mMsg);
+    bool send(const QJsonObject& message);
 
-    qDebug() << "Sending message: " << mMsg;
-    mClient->send(msg);
-}
+    EncodingFormat format() const;
+    void           setFormat(EncodingFormat format);
 
-tst_JsonClient::~tst_JsonClient()
-{
-    qDebug() << Q_FUNC_INFO;
+    qint64 readBufferSize() const;
+    void setReadBufferSize(qint64);
 
-    delete mClient;
+    qint64 writeBufferSize() const;
+    void setWriteBufferSize(qint64 sz);
 
-    delete mSpyMessageReceived;
-}
+    qint64 bytesToWrite() const;
 
+    bool messageAvailable();
+    QJsonObject readMessage();
 
-void tst_JsonClient::messageReceived(const QJsonObject& message)
-{
-    qDebug() << Q_FUNC_INFO;
+    enum QJsonStreamError
+    {
+        NoError = 0,
+        WriteFailedNoConnection,
+        MaxReadBufferSizeExceeded,
+        MaxWriteBufferSizeExceeded,
+        WriteFailed,
+        WriteFailedReturnedZero
+    };
 
-    QString str = message.value("note").toString();
-    qDebug() << "Received" << message << str;
+    QJsonStreamError lastError() const;
 
-    QVERIFY(str == mMsg);
+signals:
+    void bytesWritten(qint64);
+    void readyReadMessage();
+    void aboutToClose();
+    void readBufferOverflow(qint64);
 
-    deleteLater();
-}
+protected slots:
+    void dataReadyOnSocket();
+    void messageReceived();
+
+protected:
+    bool sendInternal(const QByteArray& byteArray);
+
+private:
+    friend class QJsonConnectionProcessor;
+    void setThreadProtection(bool) const;
+
+private:
+    Q_DECLARE_PRIVATE(QJsonStream)
+    QScopedPointer<QJsonStreamPrivate> d_ptr;
+};
+
+QT_END_NAMESPACE_JSONSTREAM
+
+#endif  // _JSON_STREAM_H

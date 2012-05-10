@@ -39,48 +39,49 @@
 **
 ****************************************************************************/
 
-#include "tst_jsonclient.h"
+#ifndef JSON_CLIENT_H
+#define JSON_CLIENT_H
 
-#include <QtTest/QtTest>
+#include <QObject>
+#include <QVariant>
+#include <QJsonObject>
 
-tst_JsonClient::tst_JsonClient(const QString& socketname, const QString& strMsg)
-    : mMsg(strMsg)
+#include "qjsonstream-global.h"
+
+QT_BEGIN_NAMESPACE_JSONSTREAM
+
+class QJsonClientPrivate;
+class Q_ADDON_JSONSTREAM_EXPORT QJsonClient : public QObject
 {
-    qDebug() << Q_FUNC_INFO;
+    Q_OBJECT
+public:
+    QJsonClient(const QString& registration, QObject *parent = 0);
+    QJsonClient(const QJsonObject& message, QObject *parent = 0);
+    QJsonClient(QObject *parent = 0);
+    ~QJsonClient();
 
-    mClient = new QJsonClient;
-    connect(mClient, SIGNAL(messageReceived(const QJsonObject&)),
-        this, SLOT(messageReceived(const QJsonObject&)));
-    mSpyMessageReceived = new QSignalSpy(mClient, SIGNAL(messageReceived(const QJsonObject&)));
+    bool connectTCP(const QString& hostname, int port);
+    bool connectLocal(const QString& socketname);
 
-    qWarning() << "Connecting to " << socketname;
-    QVERIFY(mClient->connectLocal(socketname));
+    bool send(const QJsonObject&);
+    void setFormat( EncodingFormat format );
 
-    QJsonObject msg;
-    msg.insert("note", mMsg);
+    // Do we really need a "connect with delay or error" facility?
+    // All singleton information will be put in other classes...
 
-    qDebug() << "Sending message: " << mMsg;
-    mClient->send(msg);
-}
+signals:
+    void messageReceived(const QJsonObject&);
+    void disconnected();
 
-tst_JsonClient::~tst_JsonClient()
-{
-    qDebug() << Q_FUNC_INFO;
+private slots:
+    void handleSocketDisconnected();
+    void processMessages();
 
-    delete mClient;
+private:
+    Q_DECLARE_PRIVATE(QJsonClient)
+    QScopedPointer<QJsonClientPrivate> d_ptr;
+};
 
-    delete mSpyMessageReceived;
-}
+QT_END_NAMESPACE_JSONSTREAM
 
-
-void tst_JsonClient::messageReceived(const QJsonObject& message)
-{
-    qDebug() << Q_FUNC_INFO;
-
-    QString str = message.value("note").toString();
-    qDebug() << "Received" << message << str;
-
-    QVERIFY(str == mMsg);
-
-    deleteLater();
-}
+#endif // JSONCLIENT_H

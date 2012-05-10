@@ -39,48 +39,52 @@
 **
 ****************************************************************************/
 
-#include "tst_jsonclient.h"
+#ifndef JSONAUTHORITY_H
+#define JSONAUTHORITY_H
 
-#include <QtTest/QtTest>
+#include <QObject>
+#include <QJsonObject>
 
-tst_JsonClient::tst_JsonClient(const QString& socketname, const QString& strMsg)
-    : mMsg(strMsg)
+QT_FORWARD_DECLARE_CLASS(QLocalSocket)
+
+#include "qjsonstream-global.h"
+
+QT_BEGIN_NAMESPACE_JSONSTREAM
+
+class QJsonStream;
+class AuthorizationRecord;
+
+class Q_ADDON_JSONSTREAM_EXPORT QJsonAuthority : public QObject
 {
-    qDebug() << Q_FUNC_INFO;
+    Q_OBJECT
+public:
+    enum AuthorizationState {
+        StateNotAuthorized = 0,
+        StateAuthorized = 1,
+        StatePending = 2
+    };
+    Q_ENUMS(AuthorizationState)
 
-    mClient = new QJsonClient;
-    connect(mClient, SIGNAL(messageReceived(const QJsonObject&)),
-        this, SLOT(messageReceived(const QJsonObject&)));
-    mSpyMessageReceived = new QSignalSpy(mClient, SIGNAL(messageReceived(const QJsonObject&)));
+    explicit QJsonAuthority(QObject *parent = 0);
+    virtual ~QJsonAuthority();
 
-    qWarning() << "Connecting to " << socketname;
-    QVERIFY(mClient->connectLocal(socketname));
+    virtual AuthorizationRecord clientConnected(QJsonStream *stream);
+    virtual AuthorizationRecord messageReceived(QJsonStream *stream, const QJsonObject &message);
+    virtual void clientDisconnected(QJsonStream *stream);
+};
 
-    QJsonObject msg;
-    msg.insert("note", mMsg);
+class AuthorizationRecord {
+public:
+    AuthorizationRecord() : state(QJsonAuthority::StateNotAuthorized) {}
+    AuthorizationRecord(QJsonAuthority::AuthorizationState s, QString i = QString() )
+        : identifier(i), state(s) {}
 
-    qDebug() << "Sending message: " << mMsg;
-    mClient->send(msg);
-}
+    QString identifier;
+    QJsonAuthority::AuthorizationState state;
+};
 
-tst_JsonClient::~tst_JsonClient()
-{
-    qDebug() << Q_FUNC_INFO;
+QT_END_NAMESPACE_JSONSTREAM
 
-    delete mClient;
+QT_JSONSTREAM_DECLARE_METATYPE_PTR(QJsonAuthority)
 
-    delete mSpyMessageReceived;
-}
-
-
-void tst_JsonClient::messageReceived(const QJsonObject& message)
-{
-    qDebug() << Q_FUNC_INFO;
-
-    QString str = message.value("note").toString();
-    qDebug() << "Received" << message << str;
-
-    QVERIFY(str == mMsg);
-
-    deleteLater();
-}
+#endif // JSONAUTHORITY_H

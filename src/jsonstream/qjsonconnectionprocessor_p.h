@@ -39,49 +39,73 @@
 **
 ****************************************************************************/
 
-#ifndef TST_JSONSERVER_H
-#define TST_JSONSERVER_H
+#ifndef _JSON_CONNECTION_PROCESSOR_H
+#define _JSON_CONNECTION_PROCESSOR_H
 
-#include "jsonserver.h"
+#include "qjsonstream-global.h"
+#include "qjsonconnection.h"
 
-class QSignalSpy;
+#include <QLocalSocket>
+#include <QTcpSocket>
+class QJsonObject;
 
-class tst_JsonServer : public QObject
+QT_BEGIN_NAMESPACE_JSONSTREAM
+
+#include <QLocalSocket>
+#include <QTcpSocket>
+
+class QJsonEndpoint;
+class QJsonEndpointManager;
+
+class QJsonConnectionProcessorPrivate;
+class QJsonConnectionProcessor : public QObject
 {
     Q_OBJECT
-
 public:
-    tst_JsonServer(const QString & socketname)
-        : mSocketname(socketname)
-    {
-    }
+    QJsonConnectionProcessor();
+    ~QJsonConnectionProcessor();
 
-    ~tst_JsonServer();
+    void setEndpointManager(QJsonEndpointManager *);
 
-public:
-    void noAuthTest();
-    void pidAuthorityTest();
-    void tokenAuthorityTest();
+    void setAutoReconnectEnabled(bool enabled);
+    QJsonConnection::State state() const;
 
-    QString note() { return mNote; }
-    QString id() { return mId; }
+signals:
+    void stateChanged(QJsonConnection::State);
+    void readyReadMessage();
+    void disconnected();
+    void bytesWritten(qint64);
+    void readBufferOverflow(qint64);
+    void error(QJsonConnection::Error,int,QString);
+
+public slots:
+    bool connectTCP(const QString&,int);
+    bool connectLocal(const QString&);
+    void setFormat(int);
+    void setReadBufferSize(qint64);
+    void setWriteBufferSize(qint64);
+    bool send(QJsonObject message);
+    bool messageAvailable(QJsonEndpoint *);
+    QJsonObject readMessage(QJsonEndpoint *);
 
 protected slots:
-    void connectionAdded(const QString& id);
-    void connectionRemoved(const QString& id);
-    void messageReceived(const QString& id, const QJsonObject& msg);
+    void processMessage(QJsonEndpoint* = 0);
+    void handleSocketDisconnected();
+    void handleReconnect();
+    void handleSocketError(QAbstractSocket::SocketError);
+    void handleSocketError(QLocalSocket::LocalSocketError);
+
+protected:
 
 private:
-  //  QProcess *process;
-    QString   mSocketname;
-    QString   mNote;
-    QString   mId;
-    bool      mDone;
+    Q_DECLARE_PRIVATE(QJsonConnectionProcessor)
+    QScopedPointer<QJsonConnectionProcessorPrivate> d_ptr;
 
-    QJsonServer *mServer;
-    QSignalSpy *mSpyServerConnectionAdded;
-    QSignalSpy *mSpyServerConnectionRemoved;
-    QSignalSpy *mSpyMessageReceived;
+    // forbid copy constructor
+    QJsonConnectionProcessor(const QJsonConnectionProcessor &);
+    void operator=(const QJsonConnectionProcessor &);
 };
 
-#endif // TST_JSONSERVER_H
+QT_END_NAMESPACE_JSONSTREAM
+
+#endif // _JSON_CONNECTION_PROCESSOR_H

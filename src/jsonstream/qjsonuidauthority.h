@@ -39,48 +39,41 @@
 **
 ****************************************************************************/
 
-#include "tst_jsonclient.h"
+#ifndef JSONUIDAUTHORITYPROVIDER_H
+#define JSONUIDAUTHORITYPROVIDER_H
 
-#include <QtTest/QtTest>
+#include <QHash>
+#include <QLocalSocket>
 
-tst_JsonClient::tst_JsonClient(const QString& socketname, const QString& strMsg)
-    : mMsg(strMsg)
+#include "qjsonauthority.h"
+#include "qjsonstream-global.h"
+
+QT_BEGIN_NAMESPACE_JSONSTREAM
+
+class Q_ADDON_JSONSTREAM_EXPORT QJsonUIDAuthority : public QJsonAuthority
 {
-    qDebug() << Q_FUNC_INFO;
+    Q_OBJECT
+public:
+    QJsonUIDAuthority(QObject *parent = 0);
 
-    mClient = new QJsonClient;
-    connect(mClient, SIGNAL(messageReceived(const QJsonObject&)),
-        this, SLOT(messageReceived(const QJsonObject&)));
-    mSpyMessageReceived = new QSignalSpy(mClient, SIGNAL(messageReceived(const QJsonObject&)));
+    bool authorize(qint64 uid);
+    bool authorize(const QString& name);
 
-    qWarning() << "Connecting to " << socketname;
-    QVERIFY(mClient->connectLocal(socketname));
+    bool deauthorize(qint64 uid);
+    bool deauthorize(const QString& name);
 
-    QJsonObject msg;
-    msg.insert("note", mMsg);
+    bool isAuthorized(qint64 uid) const;
+    QString name(qint64 uid) const;
 
-    qDebug() << "Sending message: " << mMsg;
-    mClient->send(msg);
-}
+    virtual AuthorizationRecord clientConnected(QJsonStream *stream);
+    virtual AuthorizationRecord messageReceived(QJsonStream *stream, const QJsonObject &message);
 
-tst_JsonClient::~tst_JsonClient()
-{
-    qDebug() << Q_FUNC_INFO;
+private:
+    QHash<qint64, QString> m_nameForUid;
+};
 
-    delete mClient;
+QT_END_NAMESPACE_JSONSTREAM
 
-    delete mSpyMessageReceived;
-}
+QT_JSONSTREAM_DECLARE_METATYPE_PTR(QJsonUIDAuthority)
 
-
-void tst_JsonClient::messageReceived(const QJsonObject& message)
-{
-    qDebug() << Q_FUNC_INFO;
-
-    QString str = message.value("note").toString();
-    qDebug() << "Received" << message << str;
-
-    QVERIFY(str == mMsg);
-
-    deleteLater();
-}
+#endif // JSONUIDAUTHORITYPROVIDER_H

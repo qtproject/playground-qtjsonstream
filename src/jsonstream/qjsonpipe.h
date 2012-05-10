@@ -39,48 +39,62 @@
 **
 ****************************************************************************/
 
-#include "tst_jsonclient.h"
+#ifndef _JSON_PIPE_H
+#define _JSON_PIPE_H
 
-#include <QtTest/QtTest>
+#include <QObject>
+#include <QJsonObject>
+#include "qjsonstream-global.h"
 
-tst_JsonClient::tst_JsonClient(const QString& socketname, const QString& strMsg)
-    : mMsg(strMsg)
+class QSocketNotifier;
+
+QT_BEGIN_NAMESPACE_JSONSTREAM
+
+class QJsonBuffer;
+
+class QJsonPipePrivate;
+class Q_ADDON_JSONSTREAM_EXPORT QJsonPipe : public QObject
 {
-    qDebug() << Q_FUNC_INFO;
+    Q_OBJECT
+public:
+    QJsonPipe(QObject *parent = 0);
+    virtual ~QJsonPipe();
 
-    mClient = new QJsonClient;
-    connect(mClient, SIGNAL(messageReceived(const QJsonObject&)),
-        this, SLOT(messageReceived(const QJsonObject&)));
-    mSpyMessageReceived = new QSignalSpy(mClient, SIGNAL(messageReceived(const QJsonObject&)));
+    bool writeEnabled() const;
+    bool readEnabled() const;
 
-    qWarning() << "Connecting to " << socketname;
-    QVERIFY(mClient->connectLocal(socketname));
+    Q_INVOKABLE bool send(const QJsonObject& message);
 
-    QJsonObject msg;
-    msg.insert("note", mMsg);
+    EncodingFormat format() const;
+    void           setFormat(EncodingFormat format);
 
-    qDebug() << "Sending message: " << mMsg;
-    mClient->send(msg);
-}
+    void setFds(int in_fd, int out_fd);
 
-tst_JsonClient::~tst_JsonClient()
-{
-    qDebug() << Q_FUNC_INFO;
+    enum PipeError { WriteFailed, WriteAtEnd, ReadFailed, ReadAtEnd };
+    Q_ENUMS(PipeError);
 
-    delete mClient;
+    bool waitForBytesWritten(int msecs = 30000);
 
-    delete mSpyMessageReceived;
-}
+signals:
+    void messageReceived(const QJsonObject& message);
+    void error(PipeError);
 
+protected slots:
+    void processMessages();
+    void objectReceived(const QJsonObject& object);
+    void inReady(int fd);
+    void outReady(int fd);
 
-void tst_JsonClient::messageReceived(const QJsonObject& message)
-{
-    qDebug() << Q_FUNC_INFO;
+private:
+    int writeInternal(int fd);
 
-    QString str = message.value("note").toString();
-    qDebug() << "Received" << message << str;
+private:
+    Q_DECLARE_PRIVATE(QJsonPipe)
+    QScopedPointer<QJsonPipePrivate> d_ptr;
+};
 
-    QVERIFY(str == mMsg);
+QJsonPipe& operator<<(QJsonPipe&, const QJsonObject& );
 
-    deleteLater();
-}
+QT_END_NAMESPACE_JSONSTREAM
+
+#endif  // _JSON_PIPE_H

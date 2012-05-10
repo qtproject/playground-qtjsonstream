@@ -42,12 +42,12 @@
 #include <QtTest>
 #include <QLocalSocket>
 #include <QLocalServer>
-#include "jsonserver.h"
-#include "jsonstream.h"
-#include "jsonpipe.h"
-#include "jsonuidauthority.h"
-#include "jsonuidrangeauthority.h"
-#include "schemavalidator.h"
+#include "qjsonserver.h"
+#include "qjsonstream.h"
+#include "qjsonpipe.h"
+#include "qjsonuidauthority.h"
+#include "qjsonuidrangeauthority.h"
+#include "qjsonschemavalidator.h"
 
 #include <unistd.h>
 
@@ -57,7 +57,7 @@ Q_DECLARE_METATYPE(QJsonObject);
 
 class Spy {
 public:
-    Spy(JsonServer *server)
+    Spy(QJsonServer *server)
         : addedSpy(server, SIGNAL(connectionAdded(const QString&)))
         , removedSpy(server, SIGNAL(connectionRemoved(const QString&)))
         , receivedSpy(server, SIGNAL(messageReceived(const QString&, const QJsonObject&)))
@@ -172,11 +172,11 @@ private:
 };
 
 /****************************/
-class TestJsonStream : public JsonStream
+class TestJsonStream : public QJsonStream
 {
 public:
     TestJsonStream(QIODevice *device)
-        : JsonStream(device) {}
+        : QJsonStream(device) {}
 
     bool sendRaw(const QByteArray& byteArray) { return sendInternal(byteArray); }
 };
@@ -188,7 +188,7 @@ class BasicServer : public QObject {
 public:
     BasicServer(const QString& socketname, qint64 _sz = 0, bool _handleReadBufOverflow = false)
         : socket(0), stream(0), readBufferSize(_sz)
-        , mHandleReadBufOverflow(_handleReadBufOverflow), mLastError(JsonStream::NoError)
+        , mHandleReadBufOverflow(_handleReadBufOverflow), mLastError(QJsonStream::NoError)
     {
         QLocalServer::removeServer(socketname);
         server = new QLocalServer(this);
@@ -226,7 +226,7 @@ public:
         return stream->format();
     }
 
-    JsonStream   *jsonStream() const { return stream; }
+    QJsonStream   *jsonStream() const { return stream; }
 private slots:
     void handleConnection() {
         socket = server->nextPendingConnection();
@@ -275,7 +275,7 @@ private:
     qint64        readBufferSize;
     bool          mHandleReadBufOverflow;
 public:
-    JsonStream::JsonStreamError mLastError;
+    QJsonStream::QJsonStreamError mLastError;
 };
 
 /****************************/
@@ -305,7 +305,7 @@ private slots:
 void tst_JsonStream::initTestCase()
 {
     qRegisterMetaType<QJsonObject>();
-    qRegisterMetaType<JsonPipe::PipeError>("PipeError");
+    qRegisterMetaType<QJsonPipe::PipeError>("PipeError");
 }
 
 #if defined(Q_OS_LINUX_ANDROID)
@@ -316,7 +316,7 @@ QString s_socketname = QStringLiteral("/tmp/tst_socket");
 
 void tst_JsonStream::noAuthTest()
 {
-    JsonServer server;
+    QJsonServer server;
     Spy spy(&server);
     QVERIFY(server.listen(s_socketname));
 
@@ -335,9 +335,9 @@ void tst_JsonStream::noAuthTest()
 
 void tst_JsonStream::authTest()
 {
-    JsonServer server;
+    QJsonServer server;
     Spy spy(&server);
-    JsonUIDAuthority *authority = new JsonUIDAuthority;
+    QJsonUIDAuthority *authority = new QJsonUIDAuthority;
     QVERIFY(server.listen(s_socketname, authority));
 
     authority->authorize(geteuid());
@@ -357,9 +357,9 @@ void tst_JsonStream::authTest()
 
 void tst_JsonStream::authFail()
 {
-    JsonServer server;
+    QJsonServer server;
     Spy spy(&server);
-    JsonUIDAuthority *authority = new JsonUIDAuthority;
+    QJsonUIDAuthority *authority = new QJsonUIDAuthority;
     QVERIFY(server.listen(s_socketname, authority));
 
     // authority->authorize(geteuid());
@@ -373,9 +373,9 @@ void tst_JsonStream::authFail()
 
 void tst_JsonStream::authRangeTest()
 {
-    JsonServer server;
+    QJsonServer server;
     Spy spy(&server);
-    JsonUIDRangeAuthority *authority = new JsonUIDRangeAuthority;
+    QJsonUIDRangeAuthority *authority = new QJsonUIDRangeAuthority;
     authority->setMinimum(geteuid());
     authority->setMaximum(geteuid());
 
@@ -397,9 +397,9 @@ void tst_JsonStream::authRangeTest()
 
 void tst_JsonStream::authRangeFail()
 {
-    JsonServer server;
+    QJsonServer server;
     Spy spy(&server);
-    JsonUIDRangeAuthority *authority = new JsonUIDRangeAuthority;
+    QJsonUIDRangeAuthority *authority = new QJsonUIDRangeAuthority;
     QVERIFY(server.listen(s_socketname, authority));
 
     Child child("testClient/testClient", QStringList() << "-socket" << s_socketname);
@@ -590,14 +590,14 @@ void tst_JsonStream::bufferSizeTest()
 
     server.jsonStream()->setWriteBufferSize(100);
     QVERIFY(!server.send(msg));
-    QVERIFY(server.jsonStream()->lastError() == JsonStream::MaxWriteBufferSizeExceeded);
+    QVERIFY(server.jsonStream()->lastError() == QJsonStream::MaxWriteBufferSizeExceeded);
 
     QString strLarge(500000, '*');
     msg.insert("large", strLarge);
     msg.insert("large_size", strLarge.size());
     server.jsonStream()->setWriteBufferSize(0);
     QVERIFY(server.send(msg));
-    QVERIFY(server.jsonStream()->lastError() == JsonStream::NoError);
+    QVERIFY(server.jsonStream()->lastError() == QJsonStream::NoError);
 
     server.waitDisconnect();
     child.waitForFinished();
@@ -624,7 +624,7 @@ void tst_JsonStream::bufferMaxReadSizeFailTest()
 
     QVERIFY(!server.jsonStream()); //disconnected
     QVERIFY(spy1.count() == 1); // overflow happend only once
-    QVERIFY(server.mLastError == JsonStream::MaxReadBufferSizeExceeded);
+    QVERIFY(server.mLastError == QJsonStream::MaxReadBufferSizeExceeded);
 }
 
 void tst_JsonStream::schemaTest()
@@ -632,20 +632,20 @@ void tst_JsonStream::schemaTest()
     QString strSchemasDir(QDir::currentPath() + "/" + "schemas");
     QVERIFY(QFile::exists(strSchemasDir));
 
-    JsonServer server;
+    QJsonServer server;
 
     QVERIFY(server.inboundValidator());
     QVERIFY(server.outboundValidator());
 
-    server.setValidatorFlags(JsonServer::ValidatorFlags(JsonServer::WarnIfInvalid | JsonServer::DropIfInvalid));
+    server.setValidatorFlags(QJsonServer::ValidatorFlags(QJsonServer::WarnIfInvalid | QJsonServer::DropIfInvalid));
     server.inboundValidator()->loadFromFolder(strSchemasDir);
     server.inboundValidator()->setValidationFilter(QRegExp("Paint\\w+Event|BackgroundEvent"));
-    server.inboundValidator()->setSchemaNameMatcher(SchemaValidator::SchemaUniqueKeyNameMatcher("event"));
+    server.inboundValidator()->setSchemaNameMatcher(QJsonSchemaValidator::SchemaUniqueKeyNameMatcher("event"));
 
 
     server.outboundValidator()->loadFromFolder(strSchemasDir);
     server.outboundValidator()->setValidationFilter(QRegExp("Reply\\w+"));
-    server.outboundValidator()->setSchemaNameMatcher(SchemaValidator::SchemaUniqueKeyNameMatcher("event"));
+    server.outboundValidator()->setSchemaNameMatcher(QJsonSchemaValidator::SchemaUniqueKeyNameMatcher("event"));
 
     QVERIFY(!server.inboundValidator()->isEmpty());
     QVERIFY(!server.outboundValidator()->isEmpty());
@@ -692,7 +692,7 @@ public:
         ::close(fd2[0]);
         ::close(fd2[1]);
     }
-    void join(JsonPipe& jp1, JsonPipe& jp2) {
+    void join(QJsonPipe& jp1, QJsonPipe& jp2) {
         // fd1[0] = Read end of jp1    fd1[1] = Write end of jp2
         // fd2[0] = Read end of jp2    fd2[1] = Write end of jp1
         jp1.setFds(fd1[0], fd2[1]);
@@ -703,7 +703,7 @@ public:
 
 class PipeSpy {
 public:
-    PipeSpy(JsonPipe& jp)
+    PipeSpy(QJsonPipe& jp)
         : msg(&jp, SIGNAL(messageReceived(const QJsonObject&)))
         , err(&jp, SIGNAL(error(PipeError))) {}
     QJsonObject at(int i) { return qvariant_cast<QJsonObject>(msg.at(i).at(0)); }
@@ -714,7 +714,7 @@ public:
 void tst_JsonStream::pipeTest()
 {
     Pipes pipes;
-    JsonPipe jpipe1, jpipe2;
+    QJsonPipe jpipe1, jpipe2;
 
     QVERIFY(!jpipe1.writeEnabled());
     QVERIFY(!jpipe1.readEnabled());
@@ -744,7 +744,7 @@ void tst_JsonStream::pipeFormatTest()
 
     foreach (EncodingFormat format, formats) {
         Pipes pipes;
-        JsonPipe jpipe1, jpipe2;
+        QJsonPipe jpipe1, jpipe2;
         pipes.join(jpipe1, jpipe2);
         PipeSpy spy(jpipe2);
         jpipe1.setFormat(format);
@@ -762,7 +762,7 @@ void tst_JsonStream::pipeFormatTest()
 void tst_JsonStream::pipeWaitTest()
 {
     Pipes pipes;
-    JsonPipe jpipe1, jpipe2;
+    QJsonPipe jpipe1, jpipe2;
     pipes.join(jpipe1, jpipe2);
 
     QJsonObject msg;

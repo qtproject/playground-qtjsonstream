@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -38,49 +38,37 @@
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
+#ifndef JSONSTREAM_GLOBAL_H
+#define JSONSTREAM_GLOBAL_H
 
-#include "tst_jsonclient.h"
+#include "qglobal.h"
 
-#include <QtTest/QtTest>
+#if defined(QT_ADDON_JSONSTREAM_LIB)
+#  define Q_ADDON_JSONSTREAM_EXPORT Q_DECL_EXPORT
+#else
+#  define Q_ADDON_JSONSTREAM_EXPORT Q_DECL_IMPORT
+#endif
 
-tst_JsonClient::tst_JsonClient(const QString& socketname, const QString& strMsg)
-    : mMsg(strMsg)
-{
-    qDebug() << Q_FUNC_INFO;
+#if defined(QT_NAMESPACE)
+#  define QT_BEGIN_NAMESPACE_JSONSTREAM namespace QT_NAMESPACE { namespace QtAddOn { namespace QtJsonStream {
+#  define QT_END_NAMESPACE_JSONSTREAM } } }
+#  define QT_USE_NAMESPACE_JSONSTREAM using namespace QT_NAMESPACE::QtAddOn::QtJsonStream;
+#  define QT_PREPEND_NAMESPACE_JSONSTREAM(name) ::QT_NAMESPACE::QtAddOn::QtJsonStream::name
+#else
+#  define QT_BEGIN_NAMESPACE_JSONSTREAM namespace QtAddOn { namespace QtJsonStream {
+#  define QT_END_NAMESPACE_JSONSTREAM } }
+#  define QT_USE_NAMESPACE_JSONSTREAM using namespace QtAddOn::QtJsonStream;
+#  define QT_PREPEND_NAMESPACE_JSONSTREAM(name) ::QtAddOn::QtJsonStream::name
+#endif
 
-    mClient = new QJsonClient;
-    connect(mClient, SIGNAL(messageReceived(const QJsonObject&)),
-        this, SLOT(messageReceived(const QJsonObject&)));
-    mSpyMessageReceived = new QSignalSpy(mClient, SIGNAL(messageReceived(const QJsonObject&)));
-
-    qWarning() << "Connecting to " << socketname;
-    QVERIFY(mClient->connectLocal(socketname));
-
-    QJsonObject msg;
-    msg.insert("note", mMsg);
-
-    qDebug() << "Sending message: " << mMsg;
-    mClient->send(msg);
-}
-
-tst_JsonClient::~tst_JsonClient()
-{
-    qDebug() << Q_FUNC_INFO;
-
-    delete mClient;
-
-    delete mSpyMessageReceived;
-}
+#define QT_JSONSTREAM_DECLARE_METATYPE_PTR(name)  Q_DECLARE_METATYPE(QtAddOn::QtJsonStream::name *)
+#define QT_JSONSTREAM_DECLARE_METATYPE_CONST_PTR(name)  Q_DECLARE_METATYPE(const QtAddOn::QtJsonStream::name *)
 
 
-void tst_JsonClient::messageReceived(const QJsonObject& message)
-{
-    qDebug() << Q_FUNC_INFO;
+QT_BEGIN_NAMESPACE_JSONSTREAM
 
-    QString str = message.value("note").toString();
-    qDebug() << "Received" << message << str;
+enum EncodingFormat { FormatUndefined, FormatUTF8, FormatBSON, FormatQBJS, FormatUTF16BE, FormatUTF16LE, FormatUTF32BE, FormatUTF32LE };
 
-    QVERIFY(str == mMsg);
+QT_END_NAMESPACE_JSONSTREAM
 
-    deleteLater();
-}
+#endif // JSONSTREAM_GLOBAL_H

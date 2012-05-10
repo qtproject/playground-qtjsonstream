@@ -44,7 +44,7 @@
 #include <QDebug>
 #include <QJsonArray>
 
-#include "jsonclient.h"
+#include "qjsonclient.h"
 
 QT_USE_NAMESPACE_JSONSTREAM
 
@@ -65,7 +65,7 @@ public slots:
     void disconnected();
 
 private:
-    JsonClient *mClient;
+    QJsonClient *mClient;
     int         mCounter;
 };
 
@@ -73,7 +73,7 @@ Container::Container()
     : mCounter(0)
 {
     qDebug() << "Creating new json client with format" << gFormat;
-    mClient = new JsonClient;
+    mClient = new QJsonClient;
     connect(mClient, SIGNAL(messageReceived(const QJsonObject&)),
             SLOT(received(const QJsonObject&)));
     connect(mClient, SIGNAL(disconnected()), SLOT(disconnected()));

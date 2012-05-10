@@ -39,48 +39,37 @@
 **
 ****************************************************************************/
 
-#include "tst_jsonclient.h"
+#ifndef JSONPIDAUTHORITYPROVIDER_H
+#define JSONPIDAUTHORITYPROVIDER_H
 
-#include <QtTest/QtTest>
+#include <QHash>
+#include <QLocalSocket>
 
-tst_JsonClient::tst_JsonClient(const QString& socketname, const QString& strMsg)
-    : mMsg(strMsg)
+#include "qjsonauthority.h"
+#include "qjsonstream-global.h"
+
+QT_BEGIN_NAMESPACE_JSONSTREAM
+
+class Q_ADDON_JSONSTREAM_EXPORT QJsonPIDAuthority : public QJsonAuthority
 {
-    qDebug() << Q_FUNC_INFO;
+    Q_OBJECT
+public:
+    QJsonPIDAuthority(QObject *parent = 0);
 
-    mClient = new QJsonClient;
-    connect(mClient, SIGNAL(messageReceived(const QJsonObject&)),
-        this, SLOT(messageReceived(const QJsonObject&)));
-    mSpyMessageReceived = new QSignalSpy(mClient, SIGNAL(messageReceived(const QJsonObject&)));
+    bool authorize(qint64 pid, const QString &applicationIdentifier);
+    bool deauthorize(qint64 pid);
+    bool isAuthorized(qint64 pid) const;
+    QString identifier(qint64 pid) const;
 
-    qWarning() << "Connecting to " << socketname;
-    QVERIFY(mClient->connectLocal(socketname));
+    virtual AuthorizationRecord clientConnected(QJsonStream *stream);
+    virtual AuthorizationRecord messageReceived(QJsonStream *stream, const QJsonObject &message);
 
-    QJsonObject msg;
-    msg.insert("note", mMsg);
+private:
+    QHash<qint64, QString> m_identifierForPid;
+};
 
-    qDebug() << "Sending message: " << mMsg;
-    mClient->send(msg);
-}
+QT_END_NAMESPACE_JSONSTREAM
 
-tst_JsonClient::~tst_JsonClient()
-{
-    qDebug() << Q_FUNC_INFO;
+QT_JSONSTREAM_DECLARE_METATYPE_PTR(QJsonPIDAuthority)
 
-    delete mClient;
-
-    delete mSpyMessageReceived;
-}
-
-
-void tst_JsonClient::messageReceived(const QJsonObject& message)
-{
-    qDebug() << Q_FUNC_INFO;
-
-    QString str = message.value("note").toString();
-    qDebug() << "Received" << message << str;
-
-    QVERIFY(str == mMsg);
-
-    deleteLater();
-}
+#endif // JSONPIDAUTHORITYPROVIDER_H

@@ -1,10 +1,10 @@
 /****************************************************************************
 **
-** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
-** This file is part of the QtAddOn.JsonStream module of the Qt Toolkit.
+** This file is part of the QtAddOn.JsonSchema module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
 ** GNU Lesser General Public License Usage
@@ -38,49 +38,9 @@
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
+#ifndef JSONSCHEMA_GLOBAL_H
+#define JSONSCHEMA_GLOBAL_H
 
-#include "tst_jsonclient.h"
+#include "qjsonstream-global.h"
 
-#include <QtTest/QtTest>
-
-tst_JsonClient::tst_JsonClient(const QString& socketname, const QString& strMsg)
-    : mMsg(strMsg)
-{
-    qDebug() << Q_FUNC_INFO;
-
-    mClient = new QJsonClient;
-    connect(mClient, SIGNAL(messageReceived(const QJsonObject&)),
-        this, SLOT(messageReceived(const QJsonObject&)));
-    mSpyMessageReceived = new QSignalSpy(mClient, SIGNAL(messageReceived(const QJsonObject&)));
-
-    qWarning() << "Connecting to " << socketname;
-    QVERIFY(mClient->connectLocal(socketname));
-
-    QJsonObject msg;
-    msg.insert("note", mMsg);
-
-    qDebug() << "Sending message: " << mMsg;
-    mClient->send(msg);
-}
-
-tst_JsonClient::~tst_JsonClient()
-{
-    qDebug() << Q_FUNC_INFO;
-
-    delete mClient;
-
-    delete mSpyMessageReceived;
-}
-
-
-void tst_JsonClient::messageReceived(const QJsonObject& message)
-{
-    qDebug() << Q_FUNC_INFO;
-
-    QString str = message.value("note").toString();
-    qDebug() << "Received" << message << str;
-
-    QVERIFY(str == mMsg);
-
-    deleteLater();
-}
+#endif // JSONSCHEMA_GLOBAL_H

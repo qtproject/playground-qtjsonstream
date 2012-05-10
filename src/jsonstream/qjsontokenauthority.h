@@ -39,48 +39,34 @@
 **
 ****************************************************************************/
 
-#include "tst_jsonclient.h"
+#ifndef JSONTOKENAUTHORITYPROVIDER_H
+#define JSONTOKENAUTHORITYPROVIDER_H
 
-#include <QtTest/QtTest>
+#include <QHash>
+#include "qjsonauthority.h"
+#include "qjsonstream-global.h"
 
-tst_JsonClient::tst_JsonClient(const QString& socketname, const QString& strMsg)
-    : mMsg(strMsg)
+QT_BEGIN_NAMESPACE_JSONSTREAM
+
+class Q_ADDON_JSONSTREAM_EXPORT QJsonTokenAuthority : public QJsonAuthority
 {
-    qDebug() << Q_FUNC_INFO;
+    Q_OBJECT
+public:
+    explicit QJsonTokenAuthority(QObject *parent = 0);
 
-    mClient = new QJsonClient;
-    connect(mClient, SIGNAL(messageReceived(const QJsonObject&)),
-        this, SLOT(messageReceived(const QJsonObject&)));
-    mSpyMessageReceived = new QSignalSpy(mClient, SIGNAL(messageReceived(const QJsonObject&)));
+    bool authorize(const QByteArray &token, const QString &applicationIdentifier);
+    bool deauthorize(const QByteArray &token);
 
-    qWarning() << "Connecting to " << socketname;
-    QVERIFY(mClient->connectLocal(socketname));
+    virtual AuthorizationRecord clientConnected(QJsonStream *stream);
+    virtual AuthorizationRecord messageReceived(QJsonStream *stream,
+                                                const QJsonObject &message);
 
-    QJsonObject msg;
-    msg.insert("note", mMsg);
+private:
+    QHash<QByteArray, QString> m_identifierForToken;
+};
 
-    qDebug() << "Sending message: " << mMsg;
-    mClient->send(msg);
-}
+QT_END_NAMESPACE_JSONSTREAM
 
-tst_JsonClient::~tst_JsonClient()
-{
-    qDebug() << Q_FUNC_INFO;
+QT_JSONSTREAM_DECLARE_METATYPE_PTR(QJsonTokenAuthority)
 
-    delete mClient;
-
-    delete mSpyMessageReceived;
-}
-
-
-void tst_JsonClient::messageReceived(const QJsonObject& message)
-{
-    qDebug() << Q_FUNC_INFO;
-
-    QString str = message.value("note").toString();
-    qDebug() << "Received" << message << str;
-
-    QVERIFY(str == mMsg);
-
-    deleteLater();
-}
+#endif // JSONTOKENAUTHORITYPROVIDER_H

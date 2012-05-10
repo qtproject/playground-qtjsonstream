@@ -39,48 +39,76 @@
 **
 ****************************************************************************/
 
-#include "tst_jsonclient.h"
+#ifndef _JSON_BUFFER_H
+#define _JSON_BUFFER_H
 
-#include <QtTest/QtTest>
+#include <QObject>
+#include <QByteArray>
+#include <QJsonObject>
+#include <QMutex>
 
-tst_JsonClient::tst_JsonClient(const QString& socketname, const QString& strMsg)
-    : mMsg(strMsg)
+#include "qjsonstream-global.h"
+
+class QMutexLocker;
+
+QT_BEGIN_NAMESPACE_JSONSTREAM
+
+class Q_ADDON_JSONSTREAM_EXPORT QJsonBuffer : public QObject
 {
-    qDebug() << Q_FUNC_INFO;
+    Q_OBJECT
+public:
+    QJsonBuffer(QObject *parent=0);
+    void append(const QByteArray& data);
+    void append(const char* data, int len);
+    int  copyFromFd(int fd);
+    void clear();
 
-    mClient = new QJsonClient;
-    connect(mClient, SIGNAL(messageReceived(const QJsonObject&)),
-        this, SLOT(messageReceived(const QJsonObject&)));
-    mSpyMessageReceived = new QSignalSpy(mClient, SIGNAL(messageReceived(const QJsonObject&)));
+    EncodingFormat  format() const;
 
-    qWarning() << "Connecting to " << socketname;
-    QVERIFY(mClient->connectLocal(socketname));
+    bool messageAvailable();
+    QJsonObject readMessage();
 
-    QJsonObject msg;
-    msg.insert("note", mMsg);
+    int size() const { return mBuffer.size(); }
 
-    qDebug() << "Sending message: " << mMsg;
-    mClient->send(msg);
+    inline bool isEnabled() const { return mEnabled; }
+    inline void setEnabled(bool enable) { mEnabled = enable; }
+
+    inline void setThreadProtection(bool enable) { mThreadProtection = enable; }
+
+signals:
+    void readyReadMessage();
+
+protected:
+    QMutexLocker *createLocker();
+
+private:
+    void processMessages();
+    bool scanUtf(int c);
+    void resetParser();
+    QByteArray rawData(int _start, int _len) const;
+
+private:
+    enum UTF8ParsingState { ParseNormal, ParseInString, ParseInBackslash };
+
+    EncodingFormat   mFormat;
+    QByteArray       mBuffer;
+    UTF8ParsingState mParserState;
+    int              mParserDepth;
+    int              mParserOffset;
+    int              mParserStartOffset;
+    bool             mEmittedReadyRead;
+    bool             mMessageAvailable;
+    int              mMessageSize;
+    bool             mEnabled;
+    bool             mThreadProtection;
+    QMutex           mMutex;
+};
+
+inline QByteArray QJsonBuffer::rawData(int _start, int _len) const
+{
+    return QByteArray::fromRawData(mBuffer.constData() + _start, _len);
 }
 
-tst_JsonClient::~tst_JsonClient()
-{
-    qDebug() << Q_FUNC_INFO;
+QT_END_NAMESPACE_JSONSTREAM
 
-    delete mClient;
-
-    delete mSpyMessageReceived;
-}
-
-
-void tst_JsonClient::messageReceived(const QJsonObject& message)
-{
-    qDebug() << Q_FUNC_INFO;
-
-    QString str = message.value("note").toString();
-    qDebug() << "Received" << message << str;
-
-    QVERIFY(str == mMsg);
-
-    deleteLater();
-}
+#endif  // _JSON_BUFFER_H

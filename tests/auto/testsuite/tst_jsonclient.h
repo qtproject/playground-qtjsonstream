@@ -60,7 +60,7 @@ private slots:
     void messageReceived(const QJsonObject& message);
 
 private:
-    JsonClient *mClient;
+    QJsonClient *mClient;
     QString mMsg;
     QSignalSpy *mSpyMessageReceived;
 };

@@ -42,9 +42,9 @@
 #include <QtTest>
 #include <QLocalSocket>
 #include <QLocalServer>
-#include "jsonserver.h"
-#include "jsonconnection.h"
-#include "jsonendpoint.h"
+#include "qjsonserver.h"
+#include "qjsonconnection.h"
+#include "qjsonendpoint.h"
 
 #include <QtQml/qqmlengine.h>
 #include <QtQml/qqmlcomponent.h>
@@ -53,7 +53,7 @@
 QT_USE_NAMESPACE_JSONSTREAM
 
 Q_DECLARE_METATYPE(QJsonObject);
-Q_DECLARE_METATYPE(JsonConnection::State);
+Q_DECLARE_METATYPE(QJsonConnection::State);
 
 void waitForSpy(QSignalSpy& spy, int count, int timeout=5000) {
     QTime stopWatch;
@@ -138,15 +138,15 @@ class EndpointContainer : public QObject
 public:
     EndpointContainer(QObject *parent = 0);
 
-    JsonEndpoint *addEndpoint(const QString & name);
+    QJsonEndpoint *addEndpoint(const QString & name);
 
-    void sendMessage(const QString & endpointDestination = QString::null, JsonEndpoint *sender = 0);
+    void sendMessage(const QString & endpointDestination = QString::null, QJsonEndpoint *sender = 0);
     void sendMessage(const QStringList & endpointDestinationList, int messagesPerEndpoint, bool grouped);
 
     QList<QObject *> endpoints() { return mEndpoints; }
 
-    JsonConnection *connection() { return mConnection; }
-    void setConnection(JsonConnection *connection);
+    QJsonConnection *connection() { return mConnection; }
+    void setConnection(QJsonConnection *connection);
 
 public slots:
     void processMessages();
@@ -155,11 +155,11 @@ signals:
     void messageReceived(const QJsonObject&, QObject *);
 
 protected:
-    void addEndpoint(JsonEndpoint *endpoint);
+    void addEndpoint(QJsonEndpoint *endpoint);
 
 private:
-    JsonConnection *mConnection;
-    JsonEndpoint *mStream;
+    QJsonConnection *mConnection;
+    QJsonEndpoint *mStream;
     QList<QObject *> mEndpoints;
     int         mCounter;
 };
@@ -170,33 +170,33 @@ EndpointContainer::EndpointContainer(QObject *parent)
 {
 }
 
-JsonEndpoint *EndpointContainer::addEndpoint(const QString & name)
+QJsonEndpoint *EndpointContainer::addEndpoint(const QString & name)
 {
-    JsonEndpoint *endpoint = new JsonEndpoint(name, mConnection);
+    QJsonEndpoint *endpoint = new QJsonEndpoint(name, mConnection);
     endpoint->setParent(mConnection);
     addEndpoint(endpoint);
     return endpoint;
 }
 
-void EndpointContainer::addEndpoint(JsonEndpoint *endpoint)
+void EndpointContainer::addEndpoint(QJsonEndpoint *endpoint)
 {
     mStream = endpoint;
     connect(mStream, SIGNAL(readyReadMessage()), SLOT(processMessages()));
     mEndpoints.append(mStream);
 }
 
-void EndpointContainer::setConnection(JsonConnection *connection)
+void EndpointContainer::setConnection(QJsonConnection *connection)
 {
     mConnection = connection;
     foreach (QObject *obj, mEndpoints) {
-        JsonEndpoint *endpoint = qobject_cast<JsonEndpoint *> (obj);
+        QJsonEndpoint *endpoint = qobject_cast<QJsonEndpoint *> (obj);
         if (endpoint)
             endpoint->setConnection(connection);
     }
 }
 
 
-void EndpointContainer::sendMessage(const QString & endpointDestination, JsonEndpoint *sender)
+void EndpointContainer::sendMessage(const QString & endpointDestination, QJsonEndpoint *sender)
 {
     QJsonObject msg;
     msg.insert("text", QLatin1String("Standard text"));
@@ -236,7 +236,7 @@ void EndpointContainer::processMessages() {
     QObject *source(sender());
     QVERIFY(source && mEndpoints.contains(source));
     if (mEndpoints.contains(source)) {
-        JsonEndpoint *endpoint = qobject_cast< JsonEndpoint *>(source);
+        QJsonEndpoint *endpoint = qobject_cast< QJsonEndpoint *>(source);
 //        qDebug() << "    XXX: came from: " << endpoint->name();
         while (endpoint->messageAvailable()) {
             QJsonObject obj = endpoint->readMessage();
@@ -257,7 +257,7 @@ public:
 
     void doConnect();
     void closeConnection() {
-        JsonConnection *oldConnection = connection();
+        QJsonConnection *oldConnection = connection();
         setConnection(0);
         delete oldConnection;
     }
@@ -273,7 +273,7 @@ ConnectionContainer::ConnectionContainer(const QString & socketName, bool bSepar
     : EndpointContainer(), mSocketName(socketName)
 {
     qDebug() << "Creating new json client at " << socketName;
-    JsonConnection *connection = new JsonConnection();
+    QJsonConnection *connection = new QJsonConnection();
     connection->setUseSeparateThreadForProcessing(bSeparateThread);
     connection->setFormat(FormatUTF8);
 
@@ -333,12 +333,12 @@ void tst_JsonConnection::connectionTest()
 
     ConnectionContainer c(socketname,true);
 
-    JsonEndpoint *endpoint = c.addEndpoint("test");
+    QJsonEndpoint *endpoint = c.addEndpoint("test");
     QVERIFY(endpoint->name() == "test");
 
-    QVERIFY(c.connection()->state() == JsonConnection::Unconnected);
+    QVERIFY(c.connection()->state() == QJsonConnection::Unconnected);
     c.doConnect();
-    QVERIFY(c.connection()->state() == JsonConnection::Connected);
+    QVERIFY(c.connection()->state() == QJsonConnection::Connected);
     c.sendMessage(endpoint->name());
 
     QSignalSpy spy(&c, SIGNAL(messageReceived(QJsonObject,QObject *)));
@@ -380,7 +380,7 @@ void tst_JsonConnection::connectionSameThreadTest()
 
     ConnectionContainer c(socketname, false);
 
-    JsonEndpoint *endpoint = c.addEndpoint("test");
+    QJsonEndpoint *endpoint = c.addEndpoint("test");
     QVERIFY(endpoint->name() == "test");
 
     c.doConnect();
@@ -425,8 +425,8 @@ signals:
 
 void tst_JsonConnection::registerQmlTypes()
 {
-    qmlRegisterType<JsonConnection>("Qt.json.connection.test", 1,0, "JsonConnection");
-    qmlRegisterType<JsonEndpoint>("Qt.json.connection.test", 1,0, "JsonEndpoint");
+    qmlRegisterType<QJsonConnection>("Qt.json.connection.test", 1,0, "JsonConnection");
+    qmlRegisterType<QJsonEndpoint>("Qt.json.connection.test", 1,0, "JsonEndpoint");
 }
 
 static const char szData[] =
@@ -654,13 +654,13 @@ void tst_JsonConnection::multipleEndpointsTest()
         QString endpointName("test");
         endpointName += QString::number(i);
 
-        JsonEndpoint *endpoint = c.addEndpoint(endpointName);
+        QJsonEndpoint *endpoint = c.addEndpoint(endpointName);
         QVERIFY(endpoint->name() == endpointName);
     }
 
-    QVERIFY(c.connection()->state() == JsonConnection::Unconnected);
+    QVERIFY(c.connection()->state() == QJsonConnection::Unconnected);
     c.doConnect();
-    QVERIFY(c.connection()->state() == JsonConnection::Connected);
+    QVERIFY(c.connection()->state() == QJsonConnection::Connected);
 
     for (int i = 0; i < knEndpointsNumber; i++) {
         QString endpointName("test");
@@ -677,7 +677,7 @@ void tst_JsonConnection::multipleEndpointsTest()
     for (it = spy.constBegin(); it != spy.constEnd(); it++) {
         QJsonObject msg = qvariant_cast<QJsonObject>(it->at(0));
 
-        JsonEndpoint *endpoint = qobject_cast<JsonEndpoint *>(qvariant_cast<QObject *>(it->at(1)));
+        QJsonEndpoint *endpoint = qobject_cast<QJsonEndpoint *>(qvariant_cast<QObject *>(it->at(1)));
         QVERIFY(endpoints.removeOne(endpoint));
 
         QVERIFY(msg.value("endpoint").isString() && msg.value("endpoint").toString() == endpoint->name());
@@ -736,7 +736,7 @@ void tst_JsonConnection::multipleThreadTest()
         endpointName += QString::number(i);
         endpointNames.append(endpointName);
 
-        JsonEndpoint *endpoint = ec->addEndpoint(endpointName);
+        QJsonEndpoint *endpoint = ec->addEndpoint(endpointName);
         QVERIFY(endpoint->name() == endpointName);
 
         QSignalSpy *spy = new QSignalSpy(ec, SIGNAL(messageReceived(QJsonObject,QObject*)));
@@ -746,9 +746,9 @@ void tst_JsonConnection::multipleThreadTest()
             newThread->start();
     }
 
-    QVERIFY(c.connection()->state() == JsonConnection::Unconnected);
+    QVERIFY(c.connection()->state() == QJsonConnection::Unconnected);
     c.doConnect();
-    QVERIFY(c.connection()->state() == JsonConnection::Connected);
+    QVERIFY(c.connection()->state() == QJsonConnection::Connected);
 
     // grouped
     c.sendMessage(endpointNames, knMessagesPerThread, true);
@@ -803,12 +803,12 @@ void tst_JsonConnection::autoreconnectTest()
     ConnectionContainer c(socketname,true);
     c.connection()->setAutoReconnectEnabled(true);
 
-    JsonEndpoint *endpoint = c.addEndpoint("test");
+    QJsonEndpoint *endpoint = c.addEndpoint("test");
     QVERIFY(endpoint->name() == "test");
 
-    QVERIFY(c.connection()->state() == JsonConnection::Unconnected);
+    QVERIFY(c.connection()->state() == QJsonConnection::Unconnected);
     c.doConnect();
-    QVERIFY(c.connection()->state() == JsonConnection::Connected);
+    QVERIFY(c.connection()->state() == QJsonConnection::Connected);
 
     QJsonObject msg;
     msg.insert("endpoint", QLatin1String("test"));
@@ -827,17 +827,17 @@ void tst_JsonConnection::autoreconnectTest()
     QVERIFY(msg.value("timeout").isDouble() && msg.value("timeout").toDouble() == 2000);
 
     // wait for disconnect -> connencting state
-    QSignalSpy spy1(c.connection(), SIGNAL(stateChanged(JsonConnection::State)));
+    QSignalSpy spy1(c.connection(), SIGNAL(stateChanged(QJsonConnection::State)));
     waitForSpy(spy1, 1);
-    JsonConnection::State state = qvariant_cast<JsonConnection::State>(spy1.last().at(0));
-    QVERIFY(state == JsonConnection::Connecting);
-    QVERIFY(c.connection()->state() == JsonConnection::Connecting);
+    QJsonConnection::State state = qvariant_cast<QJsonConnection::State>(spy1.last().at(0));
+    QVERIFY(state == QJsonConnection::Connecting);
+    QVERIFY(c.connection()->state() == QJsonConnection::Connecting);
 
     // wait for reconnection
     waitForSpy(spy1, 2, 10000);
-    state = qvariant_cast<JsonConnection::State>(spy1.last().at(0));
-    QVERIFY(state == JsonConnection::Connected);
-    QVERIFY(c.connection()->state() == JsonConnection::Connected);
+    state = qvariant_cast<QJsonConnection::State>(spy1.last().at(0));
+    QVERIFY(state == QJsonConnection::Connected);
+    QVERIFY(c.connection()->state() == QJsonConnection::Connected);
 
     // send a new message after reconnection and wait for a reply
     msg = QJsonObject();
@@ -872,12 +872,12 @@ void tst_JsonConnection::nameChangeTest()
     c.connection()->setAutoReconnectEnabled(true);
     QSignalSpy spyDef(&c, SIGNAL(messageReceived(const QJsonObject&, QObject *)));;
 
-    JsonEndpoint *endpoint = c.addEndpoint("wrong");
+    QJsonEndpoint *endpoint = c.addEndpoint("wrong");
     QVERIFY(endpoint->name() == "wrong");
 
-    QVERIFY(c.connection()->state() == JsonConnection::Unconnected);
+    QVERIFY(c.connection()->state() == QJsonConnection::Unconnected);
     c.doConnect();
-    QVERIFY(c.connection()->state() == JsonConnection::Connected);
+    QVERIFY(c.connection()->state() == QJsonConnection::Connected);
 
     c.sendMessage("test");
 

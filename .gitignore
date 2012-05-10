@@ -19,3 +19,5 @@ src/qtaddonjsonstreamversion.h
 lib/pkgconfig/*
 Makefile.Debug
 Makefile.Release
+mkspecs/*
+src/include/*
