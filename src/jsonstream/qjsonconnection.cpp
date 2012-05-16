@@ -101,25 +101,46 @@ public:
 
 /*!
     \class QJsonConnection
-    \brief The QJsonConnection class ...
+    \inmodule QtJsonStream
+    \brief The QJsonConnection class is a thread-safe client connection object that can be
+           used by multiple endpoint objects.
 
+    QJsonConnection implements a thread-safe client connection object.
+    Multiple QJsonEndpoint objects (possibly from different threads) can use a
+    QJsonConnection, providing a type of multiplexing on a single connection.  The
+    endpointPropertyName() property specifies the property that controls which endpoint
+    an inbound message should be delivered to.  A default endpoint is provided via
+    defaultEndpoint().
+
+    The processing of the connection can take place in the connection object's
+    affined thread or a separate thread, depending on the value of
+    useSeparateThreadForProcessing().
 */
 
 /*!
     \enum QJsonConnection::State
 
-    This enum describes the different states in which a connection can be.
+    This enumuration describes the different states in which a connection can be.
 
-    \value Unconnected No connected.
+    \value Unconnected Not connected.
     \value Connecting Started establishing a connection.
     \value Authenticating Started authentication process.
-    \value Connected A connection is established.
-
-    \sa QJsonConnection::state()
+    \value Connected Connection is established.
 */
 
 /*!
-  Constructs a \c QJsonConnection object.
+    \enum QJsonConnection::Error
+
+    This enumuration describes error conditions for QJsonConnection.
+
+    \value NoError No error.
+    \value UnknownError Unknown error.
+    \value LocalSocketError subError() is a local socket error code.
+    \value TcpSocketError subError() is a TCP socket error code.
+*/
+
+/*!
+  Constructs a \c QJsonConnection object with \a parent.
  */
 
 QJsonConnection::QJsonConnection(QObject *parent)
@@ -199,7 +220,7 @@ QString QJsonConnection::errorString() const
 }
 
 /*!
-  Returns a socket name to be used for Unix local socket connection.
+  Returns the socket name to be used for Unix local socket connection.
 */
 QString QJsonConnection::localSocketName() const
 {
@@ -217,7 +238,7 @@ void QJsonConnection::setLocalSocketName(const QString &name)
 }
 
 /*!
-  Returns a host name to be used for TCP socket connection.
+  Returns the host name to be used for TCP socket connection.
 */
 QString QJsonConnection::tcpHostName() const
 {
@@ -235,7 +256,7 @@ void QJsonConnection::setTcpHostName(const QString &name)
 }
 
 /*!
-  Returns a port number to be used for TCP socket connection.
+  Returns the port number to be used for TCP socket connection.
 */
 int QJsonConnection::tcpHostPort() const
 {
@@ -273,7 +294,7 @@ void QJsonConnection::setAutoReconnectEnabled(bool enabled)
 }
 
 /*!
-    Returns a property which value in message object will be used as an endpoint name.
+    Returns the property which value in message object will be used as an endpoint name.
 */
 QString QJsonConnection::endpointPropertyName() const
 {
@@ -293,7 +314,7 @@ void QJsonConnection::setEndpointPropertyName(const QString &property)
 }
 
 /*!
-  Returns a maximum size of the inbound message buffer.
+  Returns the maximum size of the inbound message buffer.
  */
 qint64 QJsonConnection::readBufferSize() const
 {
@@ -323,7 +344,7 @@ void QJsonConnection::setReadBufferSize(qint64 sz)
 }
 
 /*!
-  Returns a maximum size of the outbound message buffer.  A value of 0
+  Returns the maximum size of the outbound message buffer.  A value of 0
   means the buffer size is unlimited.
  */
 qint64 QJsonConnection::writeBufferSize() const
@@ -354,7 +375,8 @@ void QJsonConnection::setWriteBufferSize(qint64 sz)
 }
 
 /*!
-  Adds endpoint to a connection.
+  Adds \a endpoint to the connection.  Messages routed for the endpoint's
+  \l{QJsonEndpoint::name()}{name()} will be delivered to the endpoint.
  */
 void QJsonConnection::addEndpoint(QJsonEndpoint *endpoint)
 {
@@ -365,7 +387,8 @@ void QJsonConnection::addEndpoint(QJsonEndpoint *endpoint)
 }
 
 /*!
-  Removes endpoint from a connection.
+  Removes \a endpoint from the connection.  No further messages will be delivered
+  to the endpoint.
  */
 void QJsonConnection::removeEndpoint(QJsonEndpoint *endpoint)
 {
@@ -374,7 +397,7 @@ void QJsonConnection::removeEndpoint(QJsonEndpoint *endpoint)
 }
 
 /*!
-  Sets whether to create a separate worker thread for a connection
+  Sets whether a separate connection processing thread should be used.
  */
 void QJsonConnection::setUseSeparateThreadForProcessing(bool use)
 {
@@ -386,9 +409,8 @@ void QJsonConnection::setUseSeparateThreadForProcessing(bool use)
 }
 
 /*!
-  Returns whether a separate worker thread for a connection required
+  Returns whether a separate connection processing thread should be used.
 */
-
 bool QJsonConnection::useSeparateThreadForProcessing() const
 {
     Q_D(const QJsonConnection);
@@ -396,7 +418,9 @@ bool QJsonConnection::useSeparateThreadForProcessing() const
 }
 
 /*!
-  Returns a default endpoint without name.
+  Returns the default endpoint.  This endpoint will be used to process any
+  messages that cannot be directed to a named endpoint.  You must not change
+  the name of the default endpoint.
 */
 
 QJsonEndpoint * QJsonConnection::defaultEndpoint()
@@ -512,6 +536,53 @@ void QJsonConnection::handleError(QJsonConnection::Error err, int suberr, QStrin
     emit error(d->mError, d->mSubError);
 }
 
+/*! \property QJsonConnection::localSocketName
+  File path of a local socket to be used for local socket connections.
+*/
+
+/*! \property QJsonConnection::tcpHostName
+  Host name to be used for TCP socket connections.
+*/
+
+/*! \property QJsonConnection::tcpHostPort
+  Port number to be used for TCP socket connections.
+*/
+
+/*! \property QJsonConnection::state
+  The state of the connection.
+ */
+
+/*! \property QJsonConnection::autoReconnectEnabled
+  Specifies if automatic reconnection to the server should be attempted if the connection is lost.
+*/
+
+/*! \property QJsonConnection::endpointPropertyName
+  Specifies a property in inbound JSON messages whose value will be used to determine
+  which endpoint the message should be delivered to.
+*/
+
+/*! \property QJsonConnection::readBufferSize
+  The maximum size of the read buffer.  Messages that are larger than the read buffer
+  size will be rejected and the connection will be closed.  A value of 0 means
+  the read buffer is unlimited.
+ */
+
+/*! \property QJsonConnection::writeBufferSize
+  The maximum size of the outbound message buffer.  Messages that are larger than the
+  write buffer size will not be sent.  A value of 0 means the buffer size is unlimited.
+ */
+
+/*! \property QJsonConnection::useSeparateThreadForProcessing
+  Specifies whether the connection should be processed in a separate thread (created and
+  controlled by QJsonConnection) or in the object's affined thread.
+*/
+
+/*! \property QJsonConnection::defaultEndpoint
+  Specifies the default endpoint.  This endpoint will be used to process any
+  messages that cannot be directed to a named endpoint.  You must not change
+  the name of the default endpoint.
+*/
+
 /*! \fn QJsonConnection::bytesWritten(qint64 bytes)
 
     This signal is emitted every time a payload of data has been
@@ -522,10 +593,10 @@ void QJsonConnection::handleError(QJsonConnection::Error err, int suberr, QStrin
 /*! \fn QJsonConnection::readBufferOverflow(qint64 bytes)
 
   This signal is emitted when the read buffer is full of data that has been read
-  from the \l{device()}, \a bytes additional bytes are available on the device,
+  from the stream, \a bytes additional bytes are available on the stream,
   but the message is not complete.  The \l{readBufferSize()} may be increased
   to a sufficient size in a slot connected to this signal, in which case more
-  data will be read into the read buffer.  If the buffer size  is not increased,
+  data will be read into the read buffer.  If the read buffer size is not increased,
   the connection is closed.
 */
 
@@ -534,8 +605,6 @@ void QJsonConnection::handleError(QJsonConnection::Error err, int suberr, QStrin
 
     This signal is emitted whenever QJsonConnection's state changes.
     The \a state parameter is the new state.
-
-    \sa state()
 */
 
 /*!
@@ -545,7 +614,7 @@ void QJsonConnection::handleError(QJsonConnection::Error err, int suberr, QStrin
     parameter describes the type of error that occurred and \a subError
     contains the additional error code.
 
-    \sa error(), subError(), errorString()
+    \sa subError(), errorString()
 */
 
 /*!

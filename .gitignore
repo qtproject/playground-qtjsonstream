@@ -21,3 +21,4 @@ Makefile.Debug
 Makefile.Release
 mkspecs/*
 src/include/*
+doc/*

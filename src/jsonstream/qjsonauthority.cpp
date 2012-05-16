@@ -46,6 +46,7 @@ QT_BEGIN_NAMESPACE_JSONSTREAM
 /**************************************************************************************************/
 /*!
   \class QJsonAuthority
+  \inmodule QtJsonStream
   \brief The QJsonAuthority class is an abstract class used to authorize new QJson client connections.
 
   The QJsonAuthority class authorizes QJson client connections.

@@ -47,6 +47,7 @@ QT_BEGIN_NAMESPACE_JSONSTREAM
 
 /*!
   \class QJsonTokenAuthority
+  \inmodule QtJsonStream
   \brief The QJsonTokenAuthority class implements a token-based authentication scheme for QJsonServer.
 
   The QJsonTokenAuthority class authorizes QJson client connections based on tokens received from the first

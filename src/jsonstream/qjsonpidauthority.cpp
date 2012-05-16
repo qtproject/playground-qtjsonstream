@@ -53,6 +53,7 @@ QT_BEGIN_NAMESPACE_JSONSTREAM
 
 /*!
   \class QJsonPIDAuthority
+  \inmodule QtJsonStream
   \brief The QJsonPIDAuthority class implements a PID-based authentication scheme for QJsonServer.
 
   The QJsonPIDAuthority class authorizes QJson client connections based on the process ID of the

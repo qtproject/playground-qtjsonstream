@@ -79,6 +79,7 @@ public:
 
 /*!
     \class QJsonPipe
+    \inmodule QtJsonStream
     \brief The QJsonPipe class serializes JSON data.
 
     The QJsonPipe class is a generic interface for serializing and deserializing

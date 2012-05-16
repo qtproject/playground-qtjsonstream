@@ -47,7 +47,6 @@
 #include "qjsonbuffer_p.h"
 
 #include <QMap>
-#include <QThread>
 #include <QFile>
 #include <QDir>
 #include <QTimer>
@@ -89,8 +88,12 @@ public:
 
 /*!
     \class QJsonConnectionProcessor
-    \brief The QJsonConnectionProcessor class ...
+    \brief The QJsonConnectionProcessor class is a helper class for QJsonConnection
+    \internal
 
+    QJsonConnectionProcessor handles the actual connection processing.  It is
+    a separate class from QJsonConnection primarily so it can be correctly affined
+    to a separate processing thread if desired.
 */
 
 /*!
@@ -139,6 +142,9 @@ void QJsonConnectionProcessor::setAutoReconnectEnabled(bool enabled)
     d->mAutoReconnectEnabled = enabled;
 }
 
+/*!
+  Sets the endpoint manager to \a manager.
+ */
 void QJsonConnectionProcessor::setEndpointManager(QJsonEndpointManager *manager)
 {
     Q_D(QJsonConnectionProcessor);
@@ -429,6 +435,50 @@ bool QJsonConnectionProcessor::send(QJsonObject message)
     Q_D(QJsonConnectionProcessor);
     return d->mStream.send(message);
 }
+
+/*!
+  \fn void QJsonConnectionProcessor::bytesWritten(qint64 bytes)
+
+  This signal is emitted every time a payload of data has been written to the device.
+  The \a bytes argument is set to the number of bytes that were written in this payload.
+ */
+
+/*!
+    \fn void QJsonConnectionProcessor::disconnected()
+
+    This signal is emitted when the connection has been disconnected.
+
+    \warning If you need to delete the sender() of this signal in a slot connected
+    to it, use the \l{QObject::deleteLater()}{deleteLater()} function.
+*/
+
+/*!
+    \fn void QJsonConnectionProcessor::error(QJsonConnection::Error error, int subError, QString text)
+
+    This signal is emitted after an error occurred. The \a error
+    parameter describes the type of error that occurred, \a subError
+    contains the additional error code, and \a text contains the error text.
+*/
+
+/*! \fn QJsonConnectionProcessor::readBufferOverflow(qint64 bytes)
+
+  This signal is emitted when the read buffer is full of data that has been read
+  from the stream, \a bytes additional bytes are available on the stream,
+  but the message is not complete.
+*/
+
+/*!
+    \fn void QJsonConnectionProcessor::readyReadMessage()
+
+    This signal is emitted once every time new data arrives and a message is ready.
+*/
+
+/*!
+    \fn void QJsonConnectionProcessor::stateChanged(QJsonConnection::State state)
+
+    This signal is emitted whenever QJsonConnection's state changes.
+    The \a state parameter is the new state.
+*/
 
 #include "moc_qjsonconnectionprocessor_p.cpp"
 

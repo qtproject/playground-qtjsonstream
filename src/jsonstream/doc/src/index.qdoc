@@ -42,6 +42,7 @@ The JSON Stream classes implement a client/server framework.
 \list
  \li \l{Stream serialization}
  \li \l{Using JSON stream classes}
+ \li \l{Multiplexing Using QJsonConnection and QJsonEndpoint}
  \li \l{Authority notes}
 \endlist
 

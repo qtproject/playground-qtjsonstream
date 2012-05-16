@@ -62,6 +62,7 @@ inline bool isjsonws(T c)
 
 /*!
   \class QJsonBuffer
+  \inmodule QtJsonStream
   \brief The QJsonBuffer class parses data received into appropriate QJson messages
 
   The QJsonBuffer class wraps an internal buffer.  As you append
@@ -119,9 +120,9 @@ QJsonBuffer::QJsonBuffer(QObject *parent)
 */
 
 /*!
-  Append the contents of a byte array \a data onto the buffer.
-  During the execution of this function, the \l{readyReadMessage()}
-  signal may be raised.
+  Append the contents of a byte array \a data into the buffer.  If a message
+  is not already available, the buffer will be parsed, and the \l{readyReadMessage()}
+  signal may be emitted.
 */
 
 void QJsonBuffer::append(const QByteArray& data)
@@ -135,9 +136,9 @@ void QJsonBuffer::append(const QByteArray& data)
 }
 
 /*!
-  Append the \a data pointer with length \a len onto the QJsonBuffer.
-  During the execution of this function, the \l{readyReadMessage()}
-  signal may be raised.
+  Append the \a data pointer with length \a len onto the QJsonBuffer.  If a message
+  is not already available, the buffer will be parsed, and the \l{readyReadMessage()}
+  signal may be emitted.
 */
 
 void QJsonBuffer::append(const char *data, int len)
@@ -155,6 +156,9 @@ void QJsonBuffer::append(const char *data, int len)
   This function tries to eliminate extra data copy operations.
   It assumes that the file descriptor is ready to read and
   it does not try to read all of the data.
+
+  If a message is not already available, the buffer will be parsed, and the
+  \l{readyReadMessage()} signal may be emitted.
 
   Returns the number of bytes read or -1 for an error condition.
  */
@@ -225,6 +229,9 @@ bool QJsonBuffer::scanUtf( int c )
     return false;
 }
 
+/*!
+  \internal
+*/
 void QJsonBuffer::resetParser()
 {
     mParserState  = ParseNormal;
@@ -487,6 +494,11 @@ EncodingFormat QJsonBuffer::format() const
     return mFormat;
 }
 
+/*!
+  \internal
+  If thread protection is enabled, this method returns a newly allocated
+  mutex locker that locks the mutex, otherwise it returns 0.
+ */
 QMutexLocker *QJsonBuffer::createLocker()
 {
     return mThreadProtection ? new QMutexLocker(&mMutex) : 0;
@@ -517,6 +529,13 @@ QMutexLocker *QJsonBuffer::createLocker()
     \b readyReadMessage() is not emitted recursively; if you reenter the event loop
     inside a slot connected to the \b readyReadMessage() signal, the signal will not
     be reemitted.
+*/
+
+/*!
+    \fn QJsonBuffer:: setThreadProtection(bool enable)
+
+    Controls whether the buffer is thread-safe.  If \a enable is \b true,
+    all access to the buffer will be protected by a mutex.
 */
 
 #include "moc_qjsonbuffer_p.cpp"

@@ -70,6 +70,7 @@ public:
 
 /*!
     \class QJsonClient
+    \inmodule QtJsonStream
     \brief The QJsonClient class is used to send jsons to the QJsonServer.
 
     Note: The QJsonClient is not thread safe.

@@ -65,6 +65,7 @@ public:
 
 /*!
   \class QJsonServerClient
+  \inmodule QtJsonStream
   \brief The QJsonServerClient class wraps an individual connection to the QJsonServer.
  */
 
@@ -137,7 +138,7 @@ QString QJsonServerClient::identifier() const
 
 /*!
   Start processing messages from this client.  This function should
-  only be called by the \l{JsonServer}
+  only be called by the \l{QJsonServer}
  */
 
 void QJsonServerClient::start()

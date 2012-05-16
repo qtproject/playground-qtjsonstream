@@ -54,6 +54,7 @@ const QString QJsonSchemaError::kErrorPrefixStr = QString::fromLatin1("::");
 
 /*!
     \class QJsonSchemaError
+    \inmodule QtJsonStream
     \brief The QJsonSchemaError class details error conditions from parsing or
     validating JSON objects and schemas.
 

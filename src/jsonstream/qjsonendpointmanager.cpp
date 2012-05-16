@@ -51,12 +51,14 @@ static const QLatin1String kstrEndpointKey("endpoint");
 
 /*!
     \class QJsonEndpointManager
-    \brief The QJsonEndpointManager class ...
+    \brief The QJsonEndpointManager class maintains a list of endpoints
+    \internal
 
+    and determines which endpoint should be used to process a given JSON message.
 */
 
 /*!
-  Constructs a \c QJsonEndpointManager object.
+  Constructs a \c QJsonEndpointManager object with \a parent.
  */
 
 QJsonEndpointManager::QJsonEndpointManager(QJsonConnection *parent)
@@ -73,6 +75,12 @@ QJsonEndpointManager::~QJsonEndpointManager()
     clear();
 }
 
+/*!
+  Returns the default endpoint.  This endpoint is used when no matching named
+  endpoint could be found.
+
+  \sa endpoint()
+*/
 QJsonEndpoint *QJsonEndpointManager::defaultEndpoint()
 {
     QJsonEndpoint *endpoint;
@@ -93,6 +101,9 @@ QJsonEndpoint *QJsonEndpointManager::defaultEndpoint()
     return endpoint;
 }
 
+/*!
+    Add \a endpoint to the list
+*/
 void QJsonEndpointManager::addEndpoint(QJsonEndpoint *endpoint)
 {
     if (mEndpoints.key(endpoint).isEmpty()) {
@@ -102,12 +113,18 @@ void QJsonEndpointManager::addEndpoint(QJsonEndpoint *endpoint)
     }
 }
 
+/*!
+    Remove \a endpoint from the list
+*/
 void QJsonEndpointManager::removeEndpoint(QJsonEndpoint *endpoint)
 {
     mEndpoints.remove(endpoint->name());
     endpoint->setConnection(0);
 }
 
+/*!
+    Return (a copy of) the list of endpoints.
+*/
 QHash<QString, QJsonEndpoint*> & QJsonEndpointManager::endpoints()
 {
     if (!mInit) {
@@ -122,11 +139,22 @@ QHash<QString, QJsonEndpoint*> & QJsonEndpointManager::endpoints()
     return mEndpoints;
 }
 
+/*!
+   Determines the endpoint that should be used to process \a message and returns it.
+
+   The endpoint is determined by retrieving the value of the property named in
+   endpointPropertyName() from \a message.  If that value matches one of the
+   endpoints' \l{QJsonEndpoint::name()}{name()} properties, that endpoint is returned.
+   If no matching endpoint could be found, the defaultEndpoint() is returned.
+*/
 QJsonEndpoint *QJsonEndpointManager::endpoint(const QJsonObject &message)
 {
     return endpoints().value(message.value(mEndpointPropertyName).toString(), defaultEndpoint());
 }
 
+/*!
+  Clears the endpoint list.
+ */
 void QJsonEndpointManager::clear()
 {
     QList<QJsonEndpoint *> lst = mEndpoints.values();
@@ -140,6 +168,13 @@ void QJsonEndpointManager::handleNameChange()
 {
     mInit = false;  // next call to endpoints() will rehash everything
 }
+
+/*! \property QJsonEndpointManager::endpointPropertyName
+  Property name that will be used to retrieve a value from a message to determine
+  what endpoint should be used to process that message.
+
+  \sa endpoint()
+*/
 
 #include "moc_qjsonendpointmanager_p.cpp"
 

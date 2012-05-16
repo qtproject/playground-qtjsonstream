@@ -55,6 +55,7 @@ QT_BEGIN_NAMESPACE_JSONSTREAM
 
 /*!
   \class QJsonUIDAuthority
+  \inmodule QtJsonStream
   \brief The QJsonUIDAuthority class implements a UID-based authentication scheme for QJsonServer.
 
   The QJsonUIDAuthority class authorizes QJson client connections based on the user ID of the

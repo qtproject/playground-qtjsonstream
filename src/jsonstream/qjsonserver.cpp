@@ -98,6 +98,7 @@ public:
 
 /*!
     \class QJsonServer
+    \inmodule QtJsonStream
     \brief The QJsonServer class is the server endpoint for JSON communications.
 
     JSON communications is a interprocess communication (IPC) method between clients and a server.
@@ -603,13 +604,13 @@ void QJsonServer::initSchemaValidation()
 */
 
 /*!
-    \fn void QJsonServer::inboundMessageValidationFailed(const QJsonObject &message, const QtAddOn::JsonStream::SchemaError &error)
+    \fn void QJsonServer::inboundMessageValidationFailed(const QJsonObject &message, const QtAddOn::QtJsonStream::QJsonSchemaError &error)
     This signal is emitted when an inbound \a message message fails a JSON schema validation.  The validation
     error is reported in \a error.
 */
 
 /*!
-    \fn void QJsonServer::outboundMessageValidationFailed(const QJsonObject &message, const QtAddOn::JsonStream::SchemaError &error)
+    \fn void QJsonServer::outboundMessageValidationFailed(const QJsonObject &message, const QtAddOn::QtJsonStream::QJsonSchemaError &error)
     This signal is emitted when an outbound \a message message fails a JSON schema validation.  The validation
     error is reported in \a error.
 */

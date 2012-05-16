@@ -83,7 +83,7 @@ public:
 
 /*!
     \class QJsonSchemaValidator
-
+    \inmodule QtJsonStream
     \brief The QJsonSchemaValidator class validates JSON objects against JSON schemas
 
     QJsonSchemaValidator validates JSON objects against JSON schemas.  Schemas are loaded
@@ -531,6 +531,7 @@ QJsonObject QJsonSchemaValidator::setSchema(const QString &schemaName, QJsonObje
 
 /*!
     \class QJsonSchemaValidator::SchemaNameMatcher
+    \inmodule QtJsonStream
     \brief The SchemaNameMatcher class is an abstract class that provides schema matching
     functionality to a QJsonSchemaValidator object.
 
@@ -614,7 +615,7 @@ QJsonObject QJsonSchemaValidator::setSchema(const QString &schemaName, QJsonObje
 
 /*!
     \class QJsonSchemaValidator::SchemaPropertyNameMatcher
-
+    \inmodule QtJsonStream
     \brief The SchemaPropertyNameMatcher class implements a name matcher for the case when
     a property in the JSON object contains the name of a schema that should be used to
     validate the object.
@@ -660,7 +661,7 @@ QJsonObject QJsonSchemaValidator::setSchema(const QString &schemaName, QJsonObje
 
 /*!
     \class QJsonSchemaValidator::SchemaUniqueKeyNameMatcher
-
+    \inmodule QtJsonStream
     \brief The SchemaUniqueKeyNameMatcher class implements a schema name matcher for
     the case where schemas contains a uniquely defined top-level key/property pairs
     that can be used as a quick index for exact matching schemas.

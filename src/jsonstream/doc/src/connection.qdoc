@@ -1,0 +1,165 @@
+/****************************************************************************
+**
+** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
+** All rights reserved.
+** Contact: Nokia Corporation (qt-info@nokia.com)
+**
+** This file is part of the documentation of JsonStream
+**
+** $QT_BEGIN_LICENSE:FDL$
+** GNU Free Documentation License
+** Alternatively, this file may be used under the terms of the GNU Free
+** Documentation License version 1.3 as published by the Free Software
+** Foundation and appearing in the file included in the packaging of
+** this file.
+**
+** Other Usage
+** Alternatively, this file may be used in accordance with the terms
+** and conditions contained in a signed written agreement between you
+** and Nokia.
+**
+**
+**
+**
+** $QT_END_LICENSE$
+**
+****************************************************************************/
+
+/*!
+\title Multiplexing using QJsonConnection and QJsonEndpoint
+\target connection
+\page connection.html
+
+The most common use case for the JSON Stream module is a single client
+connected to a single server, as described \l{using}{here}.
+Occasionally, however, you may want to have multiple logical
+"connections" to a server multiplexed over a single socket
+connection. In this case, you can use QJsonConnection and
+QJsonEndpoint.
+
+\section1 Creating a Connection
+
+QJsonConnection represents the actual socket connection to the
+server.  It has connection methods and properties similar to those of
+QJsonClient.  It lacks, however, any receiving and sending methods and
+signals.
+
+\code
+    QJsonConnection *connection = new QJsonConnection();
+    connection->setFormat(FormatUTF8);
+    connection->connectLocal("/tmp/test_socket");
+\endcode
+
+\section1 The Default Endpoint
+
+To receive and send messages, you use a QJsonEndpoint.  A default
+endpoint is provided via QJsonConnection::defaultEndpoint().  This
+endpoint is always associated with the endpoint, so you can send
+messages like this:
+
+\code
+   connection->defaultEndpoint()->send(myJsonObject);
+\endcode
+
+QJsonEndpoint uses a readyRead API to minimize buffering.  This means
+that the endpoint will signal when there is a message available for
+the endpoint.  It is then up to the user to read the message and
+continue to read messages until there are no more available for that
+endpoint.
+
+\code
+    connect(connection->defaultEndpoint(), SIGNAL(readyReadMessage()), SLOT(readMessages()));
+    <...>
+
+    void MyClass::readMessages()
+    {
+        while (connection->defaultEndpoint()->messageAvailable()) {
+            QJsonObject msg = connection->defaultEndpoint()->readMessage();
+            <process message here>
+        }
+    }
+\endcode
+
+\section1 Adding Additional Endpoints
+
+Additional endpoints can be created and associated with the
+connection.  Each additional endpoint must have a unique
+\l{QJsonEndpoint::name()}{name()}.  This name is used by the
+connection to determine which endpoint should process each message.
+
+\code
+    QJsonEndpoint *endpoint = new QJsonEndpoint();
+    endpoint->setName("endpointName1");
+    endpoint->setConnection(connection);
+
+    connect(endpoint, SIGNAL(readyReadMessage()), SLOT(readMessages()));
+\endcode
+
+As with the default endpoint, you must connect to
+\l{QJsonEndpoint::readyReadMessage()}{readyReadMessage()} and process
+messages when signaled.
+
+\section1 Directing Incoming Messages to Endpoints
+
+QJsonConnection uses a property on each incoming message to determine
+which endpoint should receive the message.  The
+\l{QJsonConnection::endpointPropertyName()}{endpointPropertyName()}
+property specifies the name of the property in the incoming message
+that should be retrieved.  The value of this property is assumed to be
+the name of an endpoint.  QJsonConnection attempts to match this value
+with one of its associated endpoints.  If it finds a match, the
+message is directed to that endpoint.  If no match is found, it is
+directed to the default endpoint.
+
+If a connection and endpoint is set up like this:
+
+\code
+    QJsonConnection *connection = new QJsonConnection();
+    connection->setEndpointPropertyName("endpoint");
+
+    QJsonEndpoint *endpoint = new QJsonEndpoint("endpoint1", connection);
+\endcode
+
+and the following incoming message is received:
+
+\code
+{
+  "messageType": "update",
+  "endpoint": "endpoint1",
+  "newValue": "value1"
+}
+\endcode
+
+then it will be directed to endpoint1.
+
+However, if this message is received:
+
+\code
+{
+  "messageType": "update",
+  "endpoint": "endpointX",
+  "newValue": "value2"
+}
+\endcode
+
+then it will be directed to the default endpoint.
+
+\section1 Multithreading
+
+QJsonConnection and QJsonEndpoint can be used in a single threaded
+environment, but one of the main features of this system is that
+endpoints may be used in different threads.  The endpoint methods
+\l{QJsonEndpoint::send()}{send()},
+\l{QJsonEndpoint::messageAvailable()}{messageAvailable()},
+\l{QJsonEndpoint::readMessage()}{readMessage()},
+and \l{QJsonEndpoint::readMessageMap()}{readMessageMap()} are
+thread-safe, so endpoint processing can take place in a thread
+different from that of the connection.
+
+Internal connection processing will take place in the affined thread
+of the connection object, unless the object's
+\l{QJsonConnection::useSeparateThreadForProcessing()}{useSeparateThreadForProcessing()}
+property is set to true.  In that case, a new, internal thread is
+created for sole use of connection processing.  This can be useful if
+you do not want to use the main thread for the connection.
+*/

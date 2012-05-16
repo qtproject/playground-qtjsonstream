@@ -104,7 +104,7 @@ Clearly, there is a danger that the BSON encoding format could be
 confused with UTF-32LE, UTF-16BE, UTF-16LE, or even UTF-8 (for
 example, "7B 20 7D 00" which is '{ }'). To avoid confusion, it is
 recommended that UTF-16 encodings send a BOM (U+FEFF) character to
-start their stream.  When in doubt, the protcol will select UTF
+start their stream.  When in doubt, the protocol will select UTF
 encoding formats before BSON, which means that UTF-32LE is
 particularly susceptable to being done incorrectly.
 

@@ -91,11 +91,18 @@ public:
 
 /*!
     \class QJsonStream
+    \inmodule QtJsonStream
     \brief The QJsonStream class serializes JSON data.
 
     The QJsonStream class is a generic interface for serializing and deserializing
-    JSON data over a socket connection.  It is designed to support multiple serialization
-    and deserialization formats by auto-detecting the format in use.
+    JSON data over from an IO device (typically a socket connection).  It is designed
+    to support multiple serialization and deserialization formats by auto-detecting
+    the format in use.
+
+    A key feature of QJsonStream is that the user can control buffering of data.
+    Both read and write buffer sizes can be set, and data is read from the stream
+    using a readyRead scheme, ensuring that too many inbould messages (or too large
+    inbound messages) do not overwhelm the receiving application.
 */
 
 /*!
@@ -113,8 +120,7 @@ QJsonStream::QJsonStream(QIODevice *device)
 }
 
 /*!
-  Delete the \c QJsonStream object and close the connection.
-  You should call \l {setDevice()} {setDevice(0)} before calling this function.
+    QJsonStream destructor.  This method does not close the device().
  */
 
 QJsonStream::~QJsonStream()
@@ -122,7 +128,7 @@ QJsonStream::~QJsonStream()
 }
 
 /*!
-     \enum QJsonStream::JsonStreamError
+     \enum QJsonStream::QJsonStreamError
      \value NoError
         No error has occurred.
      \value WriteFailedNoConnection
@@ -130,8 +136,7 @@ QJsonStream::~QJsonStream()
      \value MaxReadBufferSizeExceeded
         Maximum read buffer size exceeded. Can't continue and connection will be closed.
      \value MaxWriteBufferSizeExceeded
-        Maximum write buffer size exceeded. Operation can be retried after write buffer maximum size increase or after data in
-        the buffer will be processed by QIODevice.
+        Maximum write buffer size exceeded. Operation can be retried after write buffer maximum size is increased or after data in the buffer has been processed by QIODevice.
      \value WriteFailed
          Write error occurred ( QIODevice::write() returned -1 ).
      \value WriteFailedReturnedZero
@@ -139,7 +144,7 @@ QJsonStream::~QJsonStream()
  */
 
 /*!
-    Returns the error the last operation produced, or NoError error if the last operation did not produce an error.
+    Returns the error code of the last stream operation, or NoError if the last operation did not produce an error.
 */
 QJsonStream::QJsonStreamError QJsonStream::lastError() const
 {
@@ -147,8 +152,8 @@ QJsonStream::QJsonStreamError QJsonStream::lastError() const
 }
 
 /*!
-    This function checks for the existence of a \c QIODevice and
-    returns whether or not it is \c atEnd()
+    If device() is non-zero, returns the result of QIODevice::atEnd() for the device,
+    else returns false.
 */
 
 bool QJsonStream::atEnd() const
@@ -158,10 +163,9 @@ bool QJsonStream::atEnd() const
 }
 
 /*!
-    This function checks for the existence of a \c QIODevice and
-    returns whether or not it is \c isOpen()
+    If device() is non-zero, returns the result of QIODevice::isOpen() for the device,
+    else returns false.
 */
-
 bool QJsonStream::isOpen() const
 {
     Q_D(const QJsonStream);
@@ -180,7 +184,7 @@ QIODevice * QJsonStream::device() const
 
 /*!
     Set the \a device used by the QJsonStream.
-    Setting the device to 0 disconnects the stream but does not close
+    Setting the device to 0 disconnects the stream from the device but does not close
     the device nor flush it.
 
     The stream does not take ownership of the device.
@@ -253,6 +257,7 @@ bool QJsonStream::send(const QJsonObject& object)
 /*!
   \internal
   Send raw QByteArray \a byteArray data over the socket.
+  Returns \b true if data was sent or buffered, \b false otherwise.
 */
 bool QJsonStream::sendInternal(const QByteArray& byteArray)
 {
@@ -366,7 +371,7 @@ void QJsonStream::setFormat( EncodingFormat format )
 }
 
 /*!
-  Returns a maximum size of the inbound message buffer.
+  Returns the maximum size of the inbound message buffer.
  */
 qint64 QJsonStream::readBufferSize() const
 {
@@ -375,8 +380,8 @@ qint64 QJsonStream::readBufferSize() const
 }
 
 /*!
-  Sets a maximum size of the inbound message buffer to \a sz thus capping a size
-  of an inbound message.
+  Sets the maximum size of the inbound message buffer to \a sz thus capping a size
+  of an inbound message.  A value of 0 means the buffer size is unlimited.
  */
 void QJsonStream::setReadBufferSize(qint64 sz)
 {
@@ -387,7 +392,7 @@ void QJsonStream::setReadBufferSize(qint64 sz)
 }
 
 /*!
-  Returns a maximum size of the outbound message buffer.  A value of 0
+  Returns the maximum size of the outbound message buffer.  A value of 0
   means the buffer size is unlimited.
  */
 qint64 QJsonStream::writeBufferSize() const
@@ -409,7 +414,7 @@ void QJsonStream::setWriteBufferSize(qint64 sz)
 }
 
 /*!
-  Returns a number of bytes currently in the write buffer.  Effectively,
+  Returns the number of bytes currently in the write buffer.  Effectively,
   if \l{writeBufferSize()} is not unlimited,  the largest message you can
   send at any one time is (\l{writeBufferSize()} - \b bytesToWrite()) bytes.
  */
@@ -440,7 +445,8 @@ bool QJsonStream::messageAvailable()
 }
 
 /*!
-  internal
+  \internal
+  Sets whether access to the internal buffer should be protected with a mutex.
  */
 void QJsonStream::setThreadProtection(bool enable) const
 {

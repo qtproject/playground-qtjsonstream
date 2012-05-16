@@ -68,12 +68,44 @@ public:
 
 /*!
     \class QJsonEndpoint
-    \brief The QJsonEndpoint class ...
+    \inmodule QtJsonStream
+    \brief The QJsonEndpoint class is an send/receive interface to a QJsonConnection.
 
+    Multiple QJsonEndpoint objects may multiplex over a single QJsonConnection.  This
+    can allow, for example, different libraries to create their own endpoints and
+    share a common connection to a server.  QJsonConnection uses an endpoint's name()
+    to direct received JSON objects to the appropriate endpoint.
+
+    QJsonEndpoint uses a readyRead scheme to avoid possible excessive buffering of
+    JSON objects.  A typical use is:
+
+    \code
+
+    QJsonEndpoint *endpoint = new QJsonEndpoint(QStringLiteral("myEndpoint"));
+    connection->addEndpoint(endpoint);
+
+    connect(endpoint, SIGNAL(readyReadMessage()), SLOT(processMessages()));
+
+    <...>
+
+    void MyClass::processMessages()
+    {
+        while (endpoint->messageAvailable()) {
+            QJsonObject msg = endpoint->readMessage();
+            <process message here>
+        }
+    }
+    \endcode
+
+    QJsonEndpoint and QJsonConnection are thread-safe, so endpoints may be used
+    in different threads.  Note that QJsonConnection only processes and buffers a
+    single message.  This means that if an endpoint does not respond to the
+    readyReadMessage() signal and read the message, no other messages will be read,
+    effectively blocking the stream.
 */
 
 /*!
-  Constructs a \c QJsonEndpoint object.
+  Constructs a \c QJsonEndpoint object with name \a name, using \a connection.
  */
 
 QJsonEndpoint::QJsonEndpoint(const QString & name, QJsonConnection *connection)
@@ -87,7 +119,7 @@ QJsonEndpoint::QJsonEndpoint(const QString & name, QJsonConnection *connection)
 }
 
 /*!
-  Deletes the \c QJsonEndpoint object.
+  Deletes the \c QJsonEndpoint object.  Removes the endpoint from the connection().
  */
 
 QJsonEndpoint::~QJsonEndpoint()
@@ -98,8 +130,8 @@ QJsonEndpoint::~QJsonEndpoint()
 }
 
 /*!
-  Returns a name used for message multiplexing. A default endpoint should not
-  have a name
+  Returns the endpoint's name.  This value is used by QJsonConnection to determine which
+  messages should be directed to this endpoint.
  */
 QString QJsonEndpoint::name() const
 {
@@ -108,8 +140,8 @@ QString QJsonEndpoint::name() const
 }
 
 /*!
-  Sets a \a name used for message multiplexing. A default endpoint should not
-  have a name
+  Sets the endpoint's name.  This value is used by QJsonConnection to determine which
+  messages should be directed to this endpoint.
  */
 void QJsonEndpoint::setName( const QString & name )
 {
@@ -119,7 +151,7 @@ void QJsonEndpoint::setName( const QString & name )
 }
 
 /*!
-  Returns a connection that is used by endpoint
+  Returns the connection that is used by this endpoint.
  */
 QJsonConnection *QJsonEndpoint::connection() const
 {
@@ -128,7 +160,7 @@ QJsonConnection *QJsonEndpoint::connection() const
 }
 
 /*!
-  Sets a \a connection to be used by endpoint
+  Sets the \a connection to be used by this endpoint.
  */
 void QJsonEndpoint::setConnection(QJsonConnection *connection)
 {
@@ -141,8 +173,9 @@ void QJsonEndpoint::setConnection(QJsonConnection *connection)
 }
 
 /*!
-  Send a QVariantMap \a message over the connection.
+  Send \a message over the connection.
   Returns \b true if the entire message was sent or buffered or \b false otherwise.
+  This method is thread-safe.
 */
 bool QJsonEndpoint::send(const QVariantMap& message)
 {
@@ -150,8 +183,9 @@ bool QJsonEndpoint::send(const QVariantMap& message)
 }
 
 /*!
-  Send a QJsonObject \a message over the connection.
+  Send \a message over the connection.
   Returns \b true if the entire message was sent or buffered or \b false otherwise.
+  This method is thread-safe.
 */
 bool QJsonEndpoint::send(const QJsonObject& message)
 {
@@ -190,7 +224,7 @@ void QJsonEndpoint::slotReadyReadMessage()
 
 /*!
   Returns \b true if a message is available to be read via \l{readMessage()}
-  or \b false otherwise.
+  or \b false otherwise.  This method is thread-safe.
  */
 bool QJsonEndpoint::messageAvailable()
 {
@@ -208,7 +242,7 @@ bool QJsonEndpoint::messageAvailable()
 
 /*!
   Returns a JSON object that has been received as a variant map.  If no message is
-  available, an empty JSON object is returned.
+  available, an empty variant map is returned.  This method is thread-safe.
  */
 QVariantMap QJsonEndpoint::readMessageMap()
 {
@@ -217,7 +251,7 @@ QVariantMap QJsonEndpoint::readMessageMap()
 
 /*!
   Returns a JSON object that has been received.  If no message is
-  available, an empty JSON object is returned.
+  available, an empty JSON object is returned.  This method is thread-safe.
  */
 QJsonObject QJsonEndpoint::readMessage()
 {
@@ -229,6 +263,15 @@ QJsonObject QJsonEndpoint::readMessage()
     }
     return obj;
 }
+
+/*! \property QJsonEndpoint::connection
+  The connection that is used by this endpoint.
+*/
+
+/*! \property QJsonEndpoint::name
+  The endpoint's name.  This value is used by QJsonConnection to determine which
+  messages should be directed to this endpoint.
+*/
 
 /*!
     \fn void QJsonEndpoint::readyReadMessage()

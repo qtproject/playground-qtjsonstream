@@ -2,6 +2,8 @@ TARGET = QtAddOnJsonStream
 QT += core network
 QT -= gui
 
+QMAKE_DOCS = $$PWD/doc/jsonstream.qdocconf
+
 load(qt_module)
 
 DEFINES += QT_ADDON_JSONSTREAM_LIB

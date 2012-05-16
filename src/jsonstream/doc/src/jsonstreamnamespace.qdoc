@@ -40,25 +40,25 @@
 ****************************************************************************/
 
 \*!
-    \namespace JsonStream
-    \brief The JsonStream namespace contains miscellaneous identifiers
+    \namespace QtJsonStream
+    \brief The QtJsonStream namespace contains miscellaneous identifiers
      used throughout the JsonStream library.
 */
 
 /*!
-  \headerfile <jsonstream-global.h>
-  \title Global JsonStream declarations
+  \headerfile <qjsonstream-global.h>
+  \title Global QtJsonStream declarations
 
-  \brief The <jsonstream-global.h> file provides namespace
-         declarations and global enumerations for JsonStream.
+  \brief The <qjsonstream-global.h> file provides namespace
+         declarations and global enumerations for QtJsonStream.
  */
 
 /*!
-  \relates <jsonstream-global.h>
+  \relates <qjsonstream-global.h>
   \enum EncodingFormat
 
   This enum is used to control the serialization format of the data stream.
-  All data streams start as \c JsonStream::FormatUndefined.  Once a data message is received,
+  All data streams start as \c QJsonStream::FormatUndefined.  Once a data message is received,
   the stream automatically switches to the format of the received message.
 
   \value FormatUndefined    No messages have been sent or received yet.
@@ -67,4 +67,6 @@
   \value FormatQBJS         Qt Binary Json
   \value FormatUTF16BE      UTF-16, Big Endian
   \value FormatUTF16LE      UTF-16, Little Endian
+  \value FormatUTF32BE      UTF-32, Big Endian
+  \value FormatUTF32LE      UTF-32, Little Endian
 */

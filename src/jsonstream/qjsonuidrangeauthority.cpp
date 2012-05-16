@@ -55,6 +55,7 @@ QT_BEGIN_NAMESPACE_JSONSTREAM
 
 /*!
   \class QJsonUIDRangeAuthority
+  \inmodule QtJsonStream
   \brief The QJsonUIDRangeAuthority class authorizes clients that fall within a range of UID values.
 
   The QJsonUIDRangeAuthority class authorizes QJson client connections based on the user ID of the
