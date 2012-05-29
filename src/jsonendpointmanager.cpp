@@ -60,7 +60,7 @@ static const QLatin1String kstrEndpointKey("endpoint");
  */
 
 JsonEndpointManager::JsonEndpointManager(JsonConnection *parent)
-    : QObject(parent), mInit(false), mEndpointPropertyName(kstrEndpointKey)
+    : QObject(parent), mInit(false), mEndpointPropertyName(kstrEndpointKey), mDefaultEndpoint(0)
 {
 }
 
@@ -85,6 +85,8 @@ JsonEndpoint *JsonEndpointManager::defaultEndpoint()
         JsonConnection *connection = qobject_cast<JsonConnection *>(parent());
         if (connection) {
             connection->addEndpoint(endpoint);
+            // XXX hack - i don't want the default endpoint in the endpoints list
+            mEndpoints.remove(QString::number((ulong)endpoint));
         }
         mDefaultEndpoint = endpoint;
     }
@@ -93,8 +95,10 @@ JsonEndpoint *JsonEndpointManager::defaultEndpoint()
 
 void JsonEndpointManager::addEndpoint(JsonEndpoint *endpoint)
 {
-    mInit = false; // rehashing required
-    mEndpoints.insert(QString::number((ulong)endpoint), endpoint);
+    if (mEndpoints.key(endpoint).isEmpty()) {
+        mInit = false; // rehashing required
+        mEndpoints.insert(QString::number((ulong)endpoint), endpoint);
+    }
 }
 
 void JsonEndpointManager::removeEndpoint(JsonEndpoint *endpoint)
@@ -109,11 +113,8 @@ QHash<QString, JsonEndpoint*> & JsonEndpointManager::endpoints()
         // rehash with real names
         QList<JsonEndpoint *> lst = mEndpoints.values();
         mEndpoints.clear();
-        mDefaultEndpoint = 0;
         foreach (JsonEndpoint *e, lst) {
             mEndpoints.insert(e->name(), e);
-            if (e->name().isEmpty())
-                mDefaultEndpoint = e;
         }
         mInit = true;
     }
@@ -122,22 +123,7 @@ QHash<QString, JsonEndpoint*> & JsonEndpointManager::endpoints()
 
 JsonEndpoint *JsonEndpointManager::endpoint(const QJsonObject &message)
 {
-    JsonEndpoint *endpoint = 0;
-    QString str;
-    QHash<QString, JsonEndpoint*> & hash(endpoints());
-    if (mDefaultEndpoint && 1 == hash.size()) {
-        // no need to search - have only single default endpoint
-    }
-    else if (!(str = message.value(mEndpointPropertyName).toString()).isEmpty()) {
-        QHash<QString, JsonEndpoint*>::const_iterator it = hash.find(str);
-        if (it != hash.constEnd())
-            endpoint = *it;
-    }
-
-    if (endpoint == 0)
-        endpoint = mDefaultEndpoint;
-
-    return endpoint;
+    return endpoints().value(message.value(mEndpointPropertyName).toString(), defaultEndpoint());
 }
 
 void JsonEndpointManager::clear()
