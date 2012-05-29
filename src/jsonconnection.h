@@ -63,6 +63,7 @@ class Q_ADDON_JSONSTREAM_EXPORT JsonConnection : public QObject
     Q_PROPERTY(bool useSeparateThreadForProcessing READ useSeparateThreadForProcessing WRITE setUseSeparateThreadForProcessing)
     Q_PROPERTY(qint64 readBufferSize READ readBufferSize WRITE setReadBufferSize)
     Q_PROPERTY(qint64 writeBufferSize READ writeBufferSize WRITE setWriteBufferSize)
+    Q_PROPERTY(JsonEndpoint * defaultEndpoint READ defaultEndpoint)
 public:
     JsonConnection(QObject *parent = 0);
     ~JsonConnection();

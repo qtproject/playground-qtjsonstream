@@ -547,21 +547,20 @@ static const char szDefaultData[] =
                 endpointPropertyName: \"endpoint\" \n\
             } \n\
             \
-            property variant prope; \n\
-            prope: JsonEndpoint { \n\
-                 id: endpoint \n\
-                 connection: _connection \n\
-                 onReadyReadMessage: { \n\
-                                retmsg = endpoint.readMessageMap(); \n\
-                                retmsg.extra = \"extra\"; \n\
-                                retmsg.int++; \n\
-                                watcher.done(); \n\
-                 } \n\
+            property variant conprop; \n\
+            conprop: Connections { \n\
+                target: _connection.defaultEndpoint \n\
+                onReadyReadMessage: { \n\
+                    retmsg = _connection.defaultEndpoint.readMessageMap(); \n\
+                    retmsg.extra = \"extra\"; \n\
+                    retmsg.int++; \n\
+                    watcher.done(); \n\
+                } \n\
             } \n\
             \
             Component.onCompleted: { \n\
                 _connection.connectLocal(); \n\
-                endpoint.send(msg); \n\
+                _connection.defaultEndpoint.send(msg); \n\
             } \n\
          }";
 
