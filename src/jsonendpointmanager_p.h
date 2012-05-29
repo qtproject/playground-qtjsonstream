@@ -75,6 +75,9 @@ public:
 
     virtual JsonEndpoint *endpoint(const QJsonObject &);
 
+protected slots:
+    void handleNameChange();
+
 protected:
     bool mInit;
     QString mEndpointPropertyName;

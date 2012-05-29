@@ -54,8 +54,8 @@ class JsonEndpointPrivate;
 class Q_ADDON_JSONSTREAM_EXPORT JsonEndpoint : public QObject
 {
     Q_OBJECT
-    Q_PROPERTY(QString name READ name WRITE setName)
-    Q_PROPERTY(JsonConnection* connection READ connection WRITE setConnection)
+    Q_PROPERTY(QString name READ name WRITE setName NOTIFY nameChanged)
+    Q_PROPERTY(JsonConnection* connection READ connection WRITE setConnection NOTIFY connectionChanged)
 public:
     JsonEndpoint(const QString & = QString::null, JsonConnection * = 0);
     virtual ~JsonEndpoint();
@@ -75,6 +75,9 @@ public:
     Q_INVOKABLE QVariantMap readMessageMap();
 
 signals:
+    void nameChanged();
+    void connectionChanged();
+
     void readyReadMessage();
 
 protected slots:

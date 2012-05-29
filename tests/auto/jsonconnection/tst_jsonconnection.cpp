@@ -307,6 +307,7 @@ private slots:
     void multipleEndpointsTest();
     void multipleThreadTest();
     void autoreconnectTest();
+    void nameChangeTest();
 private:
     void registerQmlTypes();
 
@@ -855,6 +856,42 @@ void tst_JsonConnection::autoreconnectTest()
     c.closeConnection();
 
     child.waitForFinished();
+}
+
+void tst_JsonConnection::nameChangeTest()
+{
+    QString socketname = "/tmp/tst_socket";
+
+    Child child("testClient/testClient",
+                QStringList() << "-socket" << socketname);
+
+    QSignalSpy spy0(&child, SIGNAL(serverReady()));
+    waitForSpy(spy0, 1);
+
+    ConnectionContainer c(socketname,true);
+    c.connection()->setAutoReconnectEnabled(true);
+    QSignalSpy spyDef(&c, SIGNAL(messageReceived(const QJsonObject&, QObject *)));;
+
+    JsonEndpoint *endpoint = c.addEndpoint("wrong");
+    QVERIFY(endpoint->name() == "wrong");
+
+    QVERIFY(c.connection()->state() == JsonConnection::Unconnected);
+    c.doConnect();
+    QVERIFY(c.connection()->state() == JsonConnection::Connected);
+
+    c.sendMessage("test");
+
+    waitForSpy(spyDef, 1);
+    QObject *source = (spyDef.at(0).at(1)).value<QObject *>();
+    QVERIFY(source == c.connection()->defaultEndpoint());
+    spyDef.clear();
+
+    endpoint->setName("test");
+    c.sendMessage("test");
+
+    waitForSpy(spyDef,1);
+    source = (spyDef.at(0).at(1)).value<QObject *>();
+    QVERIFY(source == endpoint);
 }
 
 QTEST_MAIN

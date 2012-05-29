@@ -115,6 +115,7 @@ void JsonEndpoint::setName( const QString & name )
 {
     Q_D(JsonEndpoint);
     d->mName = name;
+    emit nameChanged();
 }
 
 /*!
@@ -135,6 +136,8 @@ void JsonEndpoint::setConnection(JsonConnection *connection)
     d->mConnection = connection;
     if (d->mConnection)
         d->mConnection->addEndpoint(this);
+
+    emit connectionChanged();
 }
 
 /*!

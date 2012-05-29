@@ -98,6 +98,7 @@ void JsonEndpointManager::addEndpoint(JsonEndpoint *endpoint)
     if (mEndpoints.key(endpoint).isEmpty()) {
         mInit = false; // rehashing required
         mEndpoints.insert(QString::number((ulong)endpoint), endpoint);
+        connect(endpoint, SIGNAL(nameChanged()), SLOT(handleNameChange()));
     }
 }
 
@@ -133,6 +134,11 @@ void JsonEndpointManager::clear()
         endpoint->setConnection(0);
     }
     mEndpoints.clear();
+}
+
+void JsonEndpointManager::handleNameChange()
+{
+    mInit = false;  // next call to endpoints() will rehash everything
 }
 
 #include "moc_jsonendpointmanager_p.cpp"
