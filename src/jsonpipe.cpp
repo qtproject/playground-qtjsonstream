@@ -50,6 +50,7 @@
 #include <sys/select.h>
 #include <stdio.h>
 #include <errno.h>
+#include <unistd.h> // for ::write
 
 #include "jsonpipe.h"
 #include "jsonbuffer_p.h"

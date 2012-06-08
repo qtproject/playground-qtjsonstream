@@ -49,6 +49,8 @@
 #include "jsonuidrangeauthority.h"
 #include "schemavalidator.h"
 
+#include <unistd.h>
+
 QT_USE_NAMESPACE_JSONSTREAM
 
 Q_DECLARE_METATYPE(QJsonObject);

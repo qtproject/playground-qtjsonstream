@@ -45,6 +45,8 @@
 #include <QTextCodec>
 #include <QMutexLocker>
 
+#include <unistd.h> // for ::read
+
 #include "jsonbuffer_p.h"
 #include "qjsondocument.h"
 #include "qjsonobject.h"
