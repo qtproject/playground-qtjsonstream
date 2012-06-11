@@ -552,8 +552,9 @@ void JsonServer::initSchemaValidation()
     if (!strSchemaControl.isEmpty())
     {
         ValidatorFlags flags(NoValidation);
-        foreach (QString str, strSchemaControl.toLower().split(QRegExp(QStringLiteral("[,:]")),
-                                                               QString::SkipEmptyParts)) {
+        QStringList lst = strSchemaControl.toLower().split(QRegExp(QStringLiteral("[,:]")),
+                                                           QString::SkipEmptyParts);
+        foreach (QString str, lst) {
             if (str == QLatin1String("warn"))
                 flags |= WarnIfInvalid;
             else if (str == QLatin1String("drop"))
