@@ -308,15 +308,19 @@ void tst_JsonStream::initTestCase()
     qRegisterMetaType<JsonPipe::PipeError>("PipeError");
 }
 
+#if defined(Q_OS_LINUX_ANDROID)
+QString s_socketname = QStringLiteral("/dev/socket/jsonstream");
+#else
+QString s_socketname = QStringLiteral("/tmp/tst_socket");
+#endif
 
 void tst_JsonStream::noAuthTest()
 {
-    QString socketname = "/tmp/tst_socket";
     JsonServer server;
     Spy spy(&server);
-    QVERIFY(server.listen(socketname));
+    QVERIFY(server.listen(s_socketname));
 
-    Child child("testClient/testClient", QStringList() << "-socket" << socketname);
+    Child child("testClient/testClient", QStringList() << "-socket" << s_socketname);
 
     spy.waitReceived();
     qDebug() << "Got note=" << spy.lastMessage() << "from" << spy.lastSender();
@@ -331,14 +335,13 @@ void tst_JsonStream::noAuthTest()
 
 void tst_JsonStream::authTest()
 {
-    QString socketname = "/tmp/tst_socket";
     JsonServer server;
     Spy spy(&server);
     JsonUIDAuthority *authority = new JsonUIDAuthority;
-    QVERIFY(server.listen(socketname, authority));
+    QVERIFY(server.listen(s_socketname, authority));
 
     authority->authorize(geteuid());
-    Child child("testClient/testClient", QStringList() << "-socket" << socketname);
+    Child child("testClient/testClient", QStringList() << "-socket" << s_socketname);
 
     spy.waitReceived();
     qDebug() << "Got note=" << spy.lastMessage() << "from" << spy.lastSender();
@@ -354,14 +357,13 @@ void tst_JsonStream::authTest()
 
 void tst_JsonStream::authFail()
 {
-    QString socketname = "/tmp/tst_socket";
     JsonServer server;
     Spy spy(&server);
     JsonUIDAuthority *authority = new JsonUIDAuthority;
-    QVERIFY(server.listen(socketname, authority));
+    QVERIFY(server.listen(s_socketname, authority));
 
     // authority->authorize(geteuid());
-    Child child("testClient/testClient", QStringList() << "-socket" << socketname);
+    Child child("testClient/testClient", QStringList() << "-socket" << s_socketname);
 
     spy.waitFailed();
     child.waitForFinished();
@@ -371,16 +373,15 @@ void tst_JsonStream::authFail()
 
 void tst_JsonStream::authRangeTest()
 {
-    QString socketname = "/tmp/tst_socket";
     JsonServer server;
     Spy spy(&server);
     JsonUIDRangeAuthority *authority = new JsonUIDRangeAuthority;
     authority->setMinimum(geteuid());
     authority->setMaximum(geteuid());
 
-    QVERIFY(server.listen(socketname, authority));
+    QVERIFY(server.listen(s_socketname, authority));
 
-    Child child("testClient/testClient", QStringList() << "-socket" << socketname);
+    Child child("testClient/testClient", QStringList() << "-socket" << s_socketname);
 
     spy.waitReceived();
     qDebug() << "Got note=" << spy.lastMessage() << "from" << spy.lastSender();
@@ -396,13 +397,12 @@ void tst_JsonStream::authRangeTest()
 
 void tst_JsonStream::authRangeFail()
 {
-    QString socketname = "/tmp/tst_socket";
     JsonServer server;
     Spy spy(&server);
     JsonUIDRangeAuthority *authority = new JsonUIDRangeAuthority;
-    QVERIFY(server.listen(socketname, authority));
+    QVERIFY(server.listen(s_socketname, authority));
 
-    Child child("testClient/testClient", QStringList() << "-socket" << socketname);
+    Child child("testClient/testClient", QStringList() << "-socket" << s_socketname);
 
     spy.waitFailed();
     child.waitForFinished();
@@ -412,17 +412,15 @@ void tst_JsonStream::authRangeFail()
 
 void tst_JsonStream::formatTest()
 {
-    QString socketname = "/tmp/tst_socket";
-
     QStringList formats = QStringList() << "qbjs" << "bson" << "utf8" << "utf16be" << "utf16le" << "utf32be" << "utf32le";
 
     foreach (const QString& format, formats) {
-        BasicServer server(socketname);
+        BasicServer server(s_socketname);
         QSignalSpy spy(&server, SIGNAL(messageReceived(const QJsonObject&)));
         QTime stopWatch;
 
         Child child("testClient/testClient",
-                    QStringList() << "-socket" << socketname << "-format" << format);
+                    QStringList() << "-socket" << s_socketname << "-format" << format);
 
         stopWatch.start();
         forever {
@@ -476,17 +474,15 @@ void tst_JsonStream::formatTest()
 
 void tst_JsonStream::BOMformatTest()
 {
-    QString socketname = "/tmp/tst_socket";
-
     QStringList formats = QStringList() << "utf8" << "utf16be" << "utf16le" << "utf32be" << "utf32le";
 
     foreach (const QString& format, formats) {
-        BasicServer server(socketname);
+        BasicServer server(s_socketname);
         QSignalSpy spy(&server, SIGNAL(messageReceived(const QJsonObject&)));
         QTime stopWatch;
 
         Child child("testClient/testClient",
-                    QStringList() << "-socket" << socketname << "-format" << format);
+                    QStringList() << "-socket" << s_socketname << "-format" << format);
 
         stopWatch.start();
         forever {
@@ -555,15 +551,13 @@ void tst_JsonStream::BOMformatTest()
 
 void tst_JsonStream::bufferSizeTest()
 {
-    QString socketname = "/tmp/tst_socket";
-
-    BasicServer server(socketname, 100, true);
+    BasicServer server(s_socketname, 100, true);
     QSignalSpy spy(&server, SIGNAL(messageReceived(const QJsonObject&)));
     QSignalSpy spy1(&server, SIGNAL(readBufferOverflow(qint64)));
     QTime stopWatch;
 
     Child child("testClient/testClient",
-                QStringList() << "-socket" << socketname);
+                QStringList() << "-socket" << s_socketname);
 
     stopWatch.start();
     forever {
@@ -611,14 +605,12 @@ void tst_JsonStream::bufferSizeTest()
 
 void tst_JsonStream::bufferMaxReadSizeFailTest()
 {
-    QString socketname = "/tmp/tst_socket";
-
-    BasicServer server(socketname, 100);
+    BasicServer server(s_socketname, 100);
     QSignalSpy spy1(&server, SIGNAL(readBufferOverflow(qint64)));
     QTime stopWatch;
 
     Child child("testClient/testClient",
-                QStringList() << "-socket" << socketname);
+                QStringList() << "-socket" << s_socketname);
 
     stopWatch.start();
     forever {
@@ -640,7 +632,6 @@ void tst_JsonStream::schemaTest()
     QString strSchemasDir(QDir::currentPath() + "/" + "schemas");
     QVERIFY(QFile::exists(strSchemasDir));
 
-    QString socketname = "/tmp/tst_socket";
     JsonServer server;
 
     QVERIFY(server.inboundValidator());
@@ -660,9 +651,9 @@ void tst_JsonStream::schemaTest()
     QVERIFY(!server.outboundValidator()->isEmpty());
 
     Spy spy(&server);
-    QVERIFY(server.listen(socketname));
+    QVERIFY(server.listen(s_socketname));
 
-    Child child("testClient/testClient", QStringList() << "-socket" << socketname << "-schema");
+    Child child("testClient/testClient", QStringList() << "-socket" << s_socketname << "-schema");
 
     spy.waitReceived();
     qDebug() << "Got note=" << spy.lastMessage() << "from" << spy.lastSender();
