@@ -37,7 +37,9 @@
 #ifndef __int8_t_defined
 #define __int8_t_defined
 #if !defined(__APPLE__)  // Avoid Macintosh compilation problem
+#if !defined(Q_OS_LINUX_ANDROID)
 typedef char int8_t;
+#endif
 typedef short int int16_t;
 typedef int int32_t;
 #endif
