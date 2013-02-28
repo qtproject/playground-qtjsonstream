@@ -133,7 +133,7 @@ QJsonConnection::QJsonConnection(QObject *parent)
     connect(d->mProcessor, SIGNAL(disconnected()), SIGNAL(disconnected()));
     qRegisterMetaType<QJsonConnection::State>("QJsonConnection::State");
     connect(d->mProcessor, SIGNAL(stateChanged(QJsonConnection::State)), SIGNAL(stateChanged(QJsonConnection::State)));
-    qRegisterMetaType<QJsonConnection::State>("QJsonConnection::Error");
+    qRegisterMetaType<QJsonConnection::Error>("QJsonConnection::Error");
     connect(d->mProcessor, SIGNAL(error(QJsonConnection::Error,int,QString)), SLOT(handleError(QJsonConnection::Error,int,QString)));
 }
 

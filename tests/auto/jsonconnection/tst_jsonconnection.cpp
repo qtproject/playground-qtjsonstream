@@ -52,9 +52,6 @@
 
 QT_USE_NAMESPACE_JSONSTREAM
 
-Q_DECLARE_METATYPE(QJsonObject);
-Q_DECLARE_METATYPE(QJsonConnection::State);
-
 void waitForSpy(QSignalSpy& spy, int count, int timeout=5000) {
     QTime stopWatch;
     stopWatch.restart();
@@ -317,6 +314,8 @@ private:
 void tst_JsonConnection::initTestCase()
 {
     qRegisterMetaType<QJsonObject>();
+    qRegisterMetaType<QJsonConnection::State>("QJsonConnection::State");
+    qRegisterMetaType<QJsonConnection::Error>("QJsonConnection::Error");
     registerQmlTypes();
 }
 
@@ -425,6 +424,8 @@ signals:
 
 void tst_JsonConnection::registerQmlTypes()
 {
+    qRegisterMetaType<QJsonConnection*>("QJsonConnection*");
+    qRegisterMetaType<QJsonEndpoint*>("QJsonEndpoint*");
     qmlRegisterType<QJsonConnection>("Qt.json.connection.test", 1,0, "JsonConnection");
     qmlRegisterType<QJsonEndpoint>("Qt.json.connection.test", 1,0, "JsonEndpoint");
 }

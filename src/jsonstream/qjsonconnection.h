@@ -146,4 +146,7 @@ private:
 
 QT_END_NAMESPACE_JSONSTREAM
 
+Q_DECLARE_METATYPE(::QtAddOn::QtJsonStream::QJsonConnection::State)
+Q_DECLARE_METATYPE(::QtAddOn::QtJsonStream::QJsonConnection::Error)
+
 #endif // _JSON_CONNECTION_H
