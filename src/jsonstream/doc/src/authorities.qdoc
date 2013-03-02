@@ -1,26 +1,18 @@
 /****************************************************************************
 **
-** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
-** All rights reserved.
-** Contact: Nokia Corporation (qt-info@nokia.com)
+** Copyright (C) 2013 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
-** This file is part of the documentation of JsonStream
+** This file is part of the QtAddOn.JsonStream module of the Qt.
 **
 ** $QT_BEGIN_LICENSE:FDL$
-** GNU Free Documentation License
-** Alternatively, this file may be used under the terms of the GNU Free
+** GNU Free Documentation License Usage
+** This file may be used under the terms of the GNU Free
 ** Documentation License version 1.3 as published by the Free Software
 ** Foundation and appearing in the file included in the packaging of
-** this file.
-**
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms
-** and conditions contained in a signed written agreement between you
-** and Nokia.
-**
-**
-**
-**
+** this file. Please review the following information to ensure
+** the GNU Free Documentation License version 1.3 requirements
+** will be met: http://www.gnu.org/copyleft/fdl.html.
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
