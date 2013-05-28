@@ -1,5 +1,5 @@
 /*    Copyright 2009, 2010 10gen Inc.
- *    Copyright 2011 Nokia, Inc.
+ *    Copyright (C) 2013 Digia Plc and/or its subsidiary(-ies).
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
